@@ -730,4 +730,121 @@
     font-size: 8px;
     font-weight: 700;
   }
+
+  /* ── Flow category color variable (inherited by children) ── */
+  .flow-ns { --flow-color: var(--flow-north-south); }
+  .flow-sn { --flow-color: var(--flow-south-north); }
+  .flow-ss { --flow-color: var(--flow-south-south); }
+  .flow-nn { --flow-color: var(--flow-north-north); }
+
+  /* ── Static color utilities ── */
+  .col-exp { color: var(--unblue); }
+  .col-imp { color: var(--unred-dark); }
+  .col-exp-text { color: var(--unblue-text); }
+  .col-positive { color: var(--ungreen); }
+  .col-negative { color: var(--unred-dark); }
+  .col-muted { color: var(--ungrey); }
+  .col-yellow { color: var(--unyellow); }
+  .col-amber { color: #b45309; }
+  .col-amber-dark { color: #b06e2a; }
+  .bg-exp { background: var(--unblue); }
+  .bg-imp { background: var(--unred-dark); }
+
+  /* ── Legend swatch color variants ── */
+  .swatch-exp { background: var(--unblue); }
+  .swatch-imp { background: var(--unred-dark); }
+  .swatch-yellow { background: var(--unyellow); }
+
+  /* ── Dynamic bar widths driven by --pct CSS custom property (set by JS) ── */
+  .si-bar-fill { width: var(--pct, 0%); }
+  .tt-partner-bar-fill { width: var(--pct, 0%); }
+
+  /* ── Flow composition segments: width + color via CSS vars ── */
+  .si-flow-seg,
+  .tt-flow-seg {
+    height: 100%;
+    background: var(--flow-color, var(--ungrey));
+    width: var(--pct, 0%);
+  }
+
+  /* ── Elements that inherit color from a parent .flow-X class ── */
+  .si-comp-dot { background: var(--flow-color, var(--ungrey)); }
+  .si-comp-pct { color: var(--flow-color, var(--ungrey)); }
+  .tt-flow-label { color: var(--flow-color, var(--ungrey)); }
+  .legend-flow-dot { background: var(--flow-color, var(--ungrey)); }
+  .cat-strong { color: var(--flow-color, inherit); }
+
+  /* ── Flow badge in arc modal ── */
+  .si-badge.flow-badge {
+    color: var(--flow-color);
+    border-color: color-mix(in srgb, var(--flow-color) 33%, transparent);
+  }
+
+  /* ── HHI concentration gauge ── */
+  .si-card[data-hhi="low"] { --hhi-color: var(--ungreen); }
+  .si-card[data-hhi="mid"] { --hhi-color: var(--unyellow); }
+  .si-card[data-hhi="high"] { --hhi-color: #ef4444; }
+  .hhi-arc-bg { stroke: var(--ungrey-border); }
+  .hhi-arc-filled { stroke: var(--hhi-color, var(--ungrey)); }
+  .hhi-badge {
+    background: color-mix(in srgb, var(--hhi-color) 13%, transparent);
+    color: var(--hhi-color);
+    border-color: color-mix(in srgb, var(--hhi-color) 26%, transparent);
+  }
+
+  /* ── Rank display in partner rows ── */
+  .rank-display { font-size: 9px; font-family: monospace; color: var(--ungrey); }
+  .rank-pos { color: var(--ungrey); }
+  .rank-partner { font-weight: 700; }
+  .rank-partner[data-tier="high"] { color: var(--ungreen); }
+  .rank-partner[data-tier="mid"] { color: var(--unyellow); }
+  .rank-partner[data-tier="low"] { color: var(--ungrey); }
+  .rank-muted { font-size: 9px; font-family: monospace; color: var(--ungrey); }
+
+  /* ── Bilateral split badge ── */
+  .split-badge { font-size: 9px; font-family: monospace; font-weight: 700; color: var(--ungrey); }
+  .split-exp { color: var(--unblue); }
+  .split-imp { color: var(--unred-dark); }
+
+  /* ── SVG container utilities (replaces inline style on SVG elements) ── */
+  .svg-full { width: 100%; overflow: visible; }
+  .svg-polar { width: 100%; max-width: 220px; }
+  .svg-gauge { width: 100%; max-height: 130px; }
+
+  /* ── SVG chart element styles (bilateral history bars) ── */
+  .chart-bar-exp { fill: var(--unblue); opacity: 0.45; }
+  .chart-bar-exp.cur { opacity: 1; }
+  .chart-bar-imp { fill: var(--unred-dark); opacity: 0.45; }
+  .chart-bar-imp.cur { opacity: 1; }
+  .chart-cur-box { stroke: var(--unblue-text); fill: none; }
+  .chart-label { fill: var(--ungrey); font-size: 7px; font-family: "Inter", monospace; }
+  .chart-label.cur { fill: var(--unblue-text); }
+
+  /* ── Butterfly chart bars ── */
+  .butterfly-exp { fill: var(--unblue); opacity: 0.78; }
+  .butterfly-imp { fill: var(--unred-dark); opacity: 0.78; }
+  .butterfly-axis-exp { fill: var(--unblue); font-size: 7px; font-weight: 700; font-family: "Inter", sans-serif; }
+  .butterfly-axis-imp { fill: var(--unred-dark); font-size: 7px; font-weight: 700; font-family: "Inter", sans-serif; }
+
+  /* ── Polar fingerprint bars ── */
+  .polar-exp { stroke: var(--unblue); stroke-width: 6; stroke-linecap: round; opacity: 0.88; }
+  .polar-imp { stroke: var(--unred-dark); stroke-width: 6; stroke-linecap: round; opacity: 0.88; }
+
+  /* ── Compare trend chart dots ── */
+  .chart-dot-exp { fill: var(--unblue); opacity: 0.7; }
+  .chart-dot-exp.cur { opacity: 1; }
+  .chart-dot-compare { fill: #b06e2a; opacity: 0.7; }
+  .chart-dot-compare.cur { fill: var(--unyellow); opacity: 1; }
+
+  /* ── Trend bars in panel and tooltip ── */
+  .trend-bar { fill: var(--ungrey-border); }
+  .trend-bar.cur { fill: var(--unblue-dark); stroke: var(--unblue-text); stroke-width: 1; }
+  .trend-label { fill: var(--ungrey); }
+  .trend-label.cur { fill: var(--unblue-text); }
+
+  /* ── Generic SVG axis / chart labels ── */
+  .axis-label { fill: var(--ungrey-text); font-size: 7px; font-family: "Inter", monospace; }
+
+  /* ── Tooltip visibility state ── */
+  .tooltip.visible { display: block; }
 }

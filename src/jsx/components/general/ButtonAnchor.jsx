@@ -8,8 +8,10 @@ function ButtonAnchor({ className, text, url }) {
   useEffect(() => {
     if (url.includes('https')) return;
 
+    const root = window.appRef?.current ?? document;
+
     const check = () => {
-      const el = document.querySelector(url);
+      const el = root.querySelector(url);
 
       setExists(!!el);
     };
@@ -20,7 +22,7 @@ function ButtonAnchor({ className, text, url }) {
       check();
     });
 
-    observer.observe(document.body, {
+    observer.observe(root, {
       childList: true,
       subtree: true
     });

@@ -27,6 +27,7 @@
         pointer-events: none;
         position: absolute;
         top: 0;
+        width: var(--progress, 0%);
       }
     }
   }

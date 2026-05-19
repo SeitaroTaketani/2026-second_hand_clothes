@@ -3,6 +3,13 @@ import { ascending, max as d3max, sum as d3sum, easeCubicOut, easeElasticOut, fo
 import { CONFIG, STATE } from './config.js';
 import { RegionConfig } from './regions.js';
 
+const FC = {
+  'north-south': 'flow-ns',
+  'south-north': 'flow-sn',
+  'south-south': 'flow-ss',
+  'north-north': 'flow-nn',
+};
+
 const getRoot = () => window.appRef.current;
 const qs = sel => window.appRef.current.querySelector(sel);
 
@@ -1078,7 +1085,7 @@ export const TradeMap = {
         const cntStr = stat.count > 0 ? `${stat.count}` : '0';
         return `
           <div class="legend-flow-item${active ? '' : ' is-inactive'}">
-            <span class="legend-flow-dot" style="background:${CONFIG.flowColors[c.key]}"></span>
+            <span class="legend-flow-dot ${FC[c.key]}"></span>
             <span class="legend-flow-label">${c.label}</span>
             <span class="legend-flow-stat">${cntStr} · ${valStr}</span>
           </div>`;

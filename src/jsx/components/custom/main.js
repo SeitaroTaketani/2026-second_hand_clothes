@@ -8,6 +8,14 @@ import { RegionConfig } from './regions.js';
 import './../../../styles/custom/styles.css';
 
 const FLOW_DEFAULTS = ['north-south', 'south-north', 'south-south', 'north-north'];
+
+// Maps flow category key → CSS class (defines --flow-color custom property)
+const FC = {
+  'north-south': 'flow-ns',
+  'south-north': 'flow-sn',
+  'south-south': 'flow-ss',
+  'north-north': 'flow-nn'
+};
 const CAT_LABELS_FULL = {
   'north-south': 'North → South',
   'south-north': 'South → North',
@@ -210,7 +218,7 @@ const App = {
         if (menu.parentElement !== btn.parentElement) {
           btn.parentElement.appendChild(menu);
         }
-        btn.parentElement.style.zIndex = '50';
+        btn.parentElement.classList.remove('picker-is-open');
       });
       qs('.mobile-country-backdrop').classList.add('hidden');
     });
@@ -245,7 +253,7 @@ const App = {
       if (otherMenu.parentElement !== otherBtn.parentElement) {
         otherBtn.parentElement.appendChild(otherMenu);
       }
-      otherBtn.parentElement.style.zIndex = '50';
+      otherBtn.parentElement.classList.remove('picker-is-open');
     };
 
     btn.addEventListener('click', e => {
@@ -259,8 +267,7 @@ const App = {
       }
       menu.classList.toggle('hidden');
 
-      // Raise z-index of the open picker so it stacks over neighbouring controls
-      originalParent.style.zIndex = menu.classList.contains('hidden') ? '50' : '60';
+      originalParent.classList.toggle('picker-is-open', !menu.classList.contains('hidden'));
     });
 
     if (mBtn) {
@@ -286,7 +293,7 @@ const App = {
         if (menu.parentElement !== originalParent) {
           originalParent.appendChild(menu);
         }
-        originalParent.style.zIndex = '50';
+        originalParent.classList.remove('picker-is-open');
       }
     });
 
@@ -294,24 +301,17 @@ const App = {
       const term = e.target.value.toLowerCase().trim();
       if (!term) {
         // Reset to default: section/group rows visible, all children collapsed
-        for (let els = menu.querySelectorAll('.picker-section-header, .group-option, .country-option'), i = 0; i < els.length; i++) els[i].style.display = '';
-        menu.querySelectorAll('.group-children').forEach(c => {
-          c.classList.add('hidden');
-          c.style.display = '';
-        });
-        menu.querySelectorAll('.group-toggle').forEach(t => {
-          t.setAttribute('aria-expanded', 'false');
-        });
+        menu.classList.remove('is-searching');
+        menu.querySelectorAll('.country-option').forEach(c => c.classList.remove('search-hidden'));
+        menu.querySelectorAll('.group-children').forEach(c => c.classList.add('hidden'));
+        menu.querySelectorAll('.group-toggle').forEach(t => t.setAttribute('aria-expanded', 'false'));
       } else {
-        // Search mode: hide section/group rows, expand all children, filter countries
-        for (let els = menu.querySelectorAll('.picker-section-header, .group-option'), i = 0; i < els.length; i++) els[i].style.display = 'none';
-        menu.querySelectorAll('.group-children').forEach(c => {
-          c.classList.remove('hidden');
-          c.style.display = 'block';
-        });
+        // Search mode: CSS hides section/group rows and expands children; filter country items
+        menu.classList.add('is-searching');
+        menu.querySelectorAll('.group-children').forEach(c => c.classList.remove('hidden'));
         menu.querySelectorAll('.country-option').forEach(item => {
           const text = item.innerText.toLowerCase();
-          item.style.display = text.includes(term) ? 'flex' : 'none';
+          item.classList.toggle('search-hidden', !text.includes(term));
         });
       }
     });
@@ -536,11 +536,11 @@ const App = {
     const curAtoB = yearData[cy] ? yearData[cy].aToB : 0;
     const curBtoA = yearData[cy] ? yearData[cy].bToA : 0;
     const curNet = curAtoB - curBtoA;
-    const netCol = curNet >= 0 ? '#009EDB' : '#ED1847';
+    const netClass = curNet >= 0 ? 'col-exp' : 'col-imp';
     const netSign = curNet >= 0 ? '+' : '';
     const fc = STATE.filteredData.find(d => (d.exporter === expIso && d.importer === impIso) || (d.exporter === impIso && d.importer === expIso));
     const flowCat = fc ? fc.flowCategory : null;
-    const catBadge = flowCat ? `<span class="si-badge" style="color:${CONFIG.flowColors[flowCat]};border-color:${CONFIG.flowColors[flowCat]}55">${CAT_LABELS_ARROW[flowCat]}</span>` : '';
+    const catBadge = flowCat ? `<span class="si-badge flow-badge ${FC[flowCat]}">${CAT_LABELS_ARROW[flowCat]}</span>` : '';
 
     let html = `
       <div class="si-kpi-grid cols-3">
@@ -550,7 +550,7 @@ const App = {
         </div>
         <div class="si-kpi-card net">
           <div class="si-kpi-label">Net (${cy})</div>
-          <div class="si-kpi-value" style="color:${netCol}">${netSign}${mf.fmt(Math.abs(curNet))}</div>
+          <div class="si-kpi-value ${netClass}">${netSign}${mf.fmt(Math.abs(curNet))}</div>
         </div>
         <div class="si-kpi-card imp">
           <div class="si-kpi-label">← ${impName}</div>
@@ -572,10 +572,10 @@ const App = {
         const isCur = y === cy;
         const yr = String(y).slice(2);
         return `
-          <rect x="${x}" y="${H / 2 - aH}" width="${bw}" height="${aH}" rx="1" fill="#009EDB" opacity="${isCur ? 1 : 0.45}"/>
-          <rect x="${x}" y="${H / 2}" width="${bw}" height="${bH}" rx="1" fill="#ED1847" opacity="${isCur ? 1 : 0.45}"/>
-          ${isCur ? `<rect x="${x - 0.5}" y="2" width="${bw + 1}" height="${H - 4}" rx="2" fill="none" stroke="#0077B8" stroke-width="1"/>` : ''}
-          <text x="${x + bw / 2}" y="${H + 11}" text-anchor="middle" font-size="7" fill="${isCur ? '#0077B8' : '#AEA29A'}" font-family="Inter,monospace">${yr}</text>`;
+          <rect class="chart-bar-exp${isCur ? ' cur' : ''}" x="${x}" y="${H / 2 - aH}" width="${bw}" height="${aH}" rx="1"/>
+          <rect class="chart-bar-imp${isCur ? ' cur' : ''}" x="${x}" y="${H / 2}" width="${bw}" height="${bH}" rx="1"/>
+          ${isCur ? `<rect class="chart-cur-box" x="${x - 0.5}" y="2" width="${bw + 1}" height="${H - 4}" rx="2" stroke-width="1"/>` : ''}
+          <text class="chart-label${isCur ? ' cur' : ''}" x="${x + bw / 2}" y="${H + 11}" text-anchor="middle">${yr}</text>`;
       })
       .join('');
 
@@ -583,10 +583,10 @@ const App = {
       <div class="si-section">
         <div class="si-label">Bilateral Trade History</div>
         <div class="si-chart-legend">
-          <div class="si-legend-item"><div class="si-legend-swatch" style="background:#009EDB"></div><span>${expName} exports</span></div>
-          <div class="si-legend-item"><div class="si-legend-swatch" style="background:#ED1847"></div><span>${impName} exports</span></div>
+          <div class="si-legend-item"><div class="si-legend-swatch swatch-exp"></div><span>${expName} exports</span></div>
+          <div class="si-legend-item"><div class="si-legend-swatch swatch-imp"></div><span>${impName} exports</span></div>
         </div>
-        <svg width="${W}" height="${H + 14}" style="width:100%;overflow:visible">
+        <svg class="svg-full" width="${W}" height="${H + 14}">
           <line x1="0" y1="${H / 2}" x2="${W}" y2="${H / 2}" stroke="#DED9D5" stroke-width="0.5"/>
           ${bars}
         </svg>
@@ -597,14 +597,14 @@ const App = {
       .map(y => {
         const idx = years.indexOf(y);
         const net = nets[idx];
-        const nCol = net >= 0 ? '#009EDB' : '#ED1847';
+        const nClass = net >= 0 ? 'col-exp' : 'col-imp';
         const isCur = y === cy;
         return `
           <tr${isCur ? ' class="row-cur"' : ''}>
             <td class="al${isCur ? ' cur' : ' muted'}">${y}</td>
-            <td class="ar" style="color:#0077B8">${mf.fmt(atoBs[idx])}</td>
-            <td class="ar" style="color:#ED1847">${mf.fmt(bToAs[idx])}</td>
-            <td class="ar bold" style="color:${nCol}">${net >= 0 ? '+' : ''}${mf.fmt(Math.abs(net))}</td>
+            <td class="ar col-exp-text">${mf.fmt(atoBs[idx])}</td>
+            <td class="ar col-imp">${mf.fmt(bToAs[idx])}</td>
+            <td class="ar bold ${nClass}">${net >= 0 ? '+' : ''}${mf.fmt(Math.abs(net))}</td>
           </tr>`;
       })
       .join('');
@@ -616,8 +616,8 @@ const App = {
           <thead>
             <tr>
               <th class="al">Year</th>
-              <th class="ar" style="color:#0077B8">${expName} →</th>
-              <th class="ar" style="color:#ED1847">← ${impName}</th>
+              <th class="ar col-exp-text">${expName} →</th>
+              <th class="ar col-imp">← ${impName}</th>
               <th class="ar">Net</th>
             </tr>
           </thead>
@@ -686,13 +686,13 @@ const App = {
 
     const headerRows = metricRows
       .map(r => {
-        const hlA = r.winA === true ? 'color:#72BF44' : r.winA === false ? 'color:#ED1847' : '';
-        const hlB = r.winA === false ? 'color:#72BF44' : r.winA === true ? 'color:#ED1847' : '';
+        const hlAClass = r.winA === true ? 'col-positive' : r.winA === false ? 'col-negative' : '';
+        const hlBClass = r.winA === false ? 'col-positive' : r.winA === true ? 'col-negative' : '';
         return `
           <tr>
-            <td class="ar" style="${hlA}">${r.vA}</td>
+            <td class="ar ${hlAClass}">${r.vA}</td>
             <td class="ac muted bold compare-label">${r.label}</td>
-            <td style="${hlB}">${r.vB}</td>
+            <td class="${hlBClass}">${r.vB}</td>
           </tr>`;
       })
       .join('');
@@ -706,7 +706,7 @@ const App = {
           <span class="si-kpi-card-compare-vs">vs</span>
         </div>
         <div class="si-kpi-card si-kpi-card-compare-b">
-          <div class="si-kpi-value si-kpi-value-small" style="color:#b45309">${nameB}</div>
+          <div class="si-kpi-value si-kpi-value-small col-amber">${nameB}</div>
         </div>
       </div>
       <table class="si-table has-margin">${headerRows}</table>`;
@@ -729,7 +729,7 @@ const App = {
         const x = i * (bw + gap) + bw / 2;
         const yp = H - (totA[y] / maxV) * H;
         const isCur = y === STATE.year;
-        return `<circle cx="${x}" cy="${yp}" r="${isCur ? 4 : 2}" fill="#009EDB" opacity="${isCur ? 1 : 0.7}"/>`;
+        return `<circle class="chart-dot-exp${isCur ? ' cur' : ''}" cx="${x}" cy="${yp}" r="${isCur ? 4 : 2}"/>`;
       })
       .join('');
     const dotsB = years
@@ -737,7 +737,7 @@ const App = {
         const x = i * (bw + gap) + bw / 2;
         const yp = H - (totB[y] / maxV) * H;
         const isCur = y === STATE.year;
-        return `<circle cx="${x}" cy="${yp}" r="${isCur ? 4 : 2}" fill="${isCur ? '#FBAF17' : '#B06E2A'}" opacity="${isCur ? 1 : 0.7}"/>`;
+        return `<circle class="chart-dot-compare${isCur ? ' cur' : ''}" cx="${x}" cy="${yp}" r="${isCur ? 4 : 2}"/>`;
       })
       .join('');
     const xLabels = years
@@ -745,7 +745,7 @@ const App = {
       .map(y => {
         const idx = years.indexOf(y);
         const x = idx * (bw + gap) + bw / 2;
-        return `<text x="${x}" y="${H + 12}" text-anchor="middle" font-size="7" fill="#6E6259" font-family="Inter,monospace">${String(y).slice(2)}</text>`;
+        return `<text class="axis-label" x="${x}" y="${H + 12}" text-anchor="middle">${String(y).slice(2)}</text>`;
       })
       .join('');
 
@@ -753,10 +753,10 @@ const App = {
       <div class="si-section">
         <div class="si-label">Trade Volume Trend</div>
         <div class="si-chart-legend">
-          <div class="si-legend-item"><div class="si-legend-swatch" style="background:#009EDB;height:2px"></div><span>${nameA}</span></div>
-          <div class="si-legend-item"><div class="si-legend-swatch" style="background:#FBAF17;height:2px"></div><span>${nameB}</span></div>
+          <div class="si-legend-item"><div class="si-legend-swatch swatch-exp"></div><span>${nameA}</span></div>
+          <div class="si-legend-item"><div class="si-legend-swatch swatch-yellow"></div><span>${nameB}</span></div>
         </div>
-        <svg width="${W}" height="${H + 16}" style="width:100%;overflow:visible">
+        <svg class="svg-full" width="${W}" height="${H + 16}">
           <polyline points="${points(totA)}" fill="none" stroke="#009EDB" stroke-width="1.5" opacity="0.8"/>
           <polyline points="${points(totB)}" fill="none" stroke="#B06E2A" stroke-width="1.5" opacity="0.8"/>
           ${dotsA}${dotsB}${xLabels}
@@ -771,9 +771,9 @@ const App = {
         const winA = totA[y] > totB[y];
         return `
           <tr${isCur ? ' class="row-cur"' : ''}>
-            <td class="ar" style="color:${winA ? '#72BF44' : '#AEA29A'}">${mf.fmt(totA[y])}</td>
+            <td class="ar ${winA ? 'col-positive' : 'col-muted'}">${mf.fmt(totA[y])}</td>
             <td class="ac${isCur ? ' cur' : ' muted'}">${y}</td>
-            <td style="color:${!winA ? '#72BF44' : '#AEA29A'}">${mf.fmt(totB[y])}</td>
+            <td class="${!winA ? 'col-positive' : 'col-muted'}">${mf.fmt(totB[y])}</td>
           </tr>`;
       })
       .join('');
@@ -784,9 +784,9 @@ const App = {
         <table class="si-table">
           <thead>
             <tr>
-              <th class="ar" style="color:#0077B8">${nameA}</th>
+              <th class="ar col-exp-text">${nameA}</th>
               <th class="ac">Year</th>
-              <th style="color:#B06E2A">${nameB}</th>
+              <th class="col-amber-dark">${nameB}</th>
             </tr>
           </thead>
           <tbody>${tableRows}</tbody>
@@ -819,7 +819,6 @@ const App = {
     if (!stats) return html;
 
     const isExp = stats.netBalance >= 0;
-    const balColor = isExp ? '#009EDB' : '#ED1847';
     html += `
       <div class="si-section">
         <div class="si-label">Key Metrics (${STATE.year})</div>
@@ -830,7 +829,7 @@ const App = {
           </div>
           <div class="si-kpi-card ${isExp ? 'exp' : 'imp'}">
             <div class="si-kpi-label">${mf.netLabel.replace(':', '')}</div>
-            <div class="si-kpi-value" style="color:${balColor}">${isExp ? '+' : ''}${mf.fmt(Math.abs(stats.netBalance))}</div>
+            <div class="si-kpi-value ${isExp ? 'col-exp' : 'col-imp'}">${isExp ? '+' : ''}${mf.fmt(Math.abs(stats.netBalance))}</div>
           </div>
         </div>
         <div class="si-role-wrap">
@@ -882,15 +881,18 @@ const App = {
           const barPct = Math.round((val / maxPVal) * 100);
           const isExportTo = !!partnerExports[pIso];
           const arrow = isExportTo ? '→' : '←';
-          const aColor = isExportTo ? '#009EDB' : '#ED1847';
+          const aColorClass = isExportTo ? 'col-exp' : 'col-imp';
+          const bgColorClass = isExportTo ? 'bg-exp' : 'bg-imp';
           const arcExpIso = isExportTo ? iso : pIso;
           const arcImpIso = isExportTo ? pIso : iso;
 
           // Rank asymmetry: where does iso rank in pIso's own partner list? (pre-threshold)
           const theirRank = getPartnerRank(iso, pIso);
-          const rankCol = theirRank <= 3 ? '#72BF44' : theirRank <= 10 ? '#FBAF17' : '#AEA29A';
+          const rankTier = theirRank <= 3 ? 'high' : theirRank <= 10 ? 'mid' : 'low';
           const rankTip = theirRank > 0 ? `${pName} ranks ${isoName} as their #${theirRank} trading partner (pre-threshold)` : '';
-          const rankDisplay = theirRank > 0 ? `<span title="${rankTip}" style="font-size:9px;font-family:monospace;color:#AEA29A">${idx + 1}·<span style="color:${rankCol};font-weight:700">#${theirRank}</span></span>` : `<span style="font-size:9px;font-family:monospace;color:#AEA29A">${idx + 1}</span>`;
+          const rankDisplay = theirRank > 0
+            ? `<span class="rank-display"><span class="rank-pos">${idx + 1}·</span><span class="rank-partner" data-tier="${rankTier}" title="${rankTip}">#${theirRank}</span></span>`
+            : `<span class="rank-muted">${idx + 1}</span>`;
 
           // Bilateral flow split: share flowing in the dominant direction (pre-threshold gross flows)
           let splitBadge = '';
@@ -906,9 +908,9 @@ const App = {
               if (tot > 0) {
                 const domPct = Math.round((Math.max(isoOut, isoIn) / tot) * 100);
                 const expDom = isoOut >= isoIn;
-                const badgeCol = domPct >= 75 ? (expDom ? '#009EDB' : '#ED1847') : '#AEA29A';
+                const splitCls = domPct >= 75 ? (expDom ? 'split-exp' : 'split-imp') : '';
                 const tip = expDom ? `${domPct}% of gross bilateral trade flows from ${isoName}` : `${domPct}% of gross bilateral trade flows from ${pName}`;
-                splitBadge = `<span style="color:${badgeCol};font-size:9px;font-family:monospace;font-weight:700" title="${tip}">${expDom ? '→' : '←'}${domPct}%</span>`;
+                splitBadge = `<span class="split-badge ${splitCls}" title="${tip}">${expDom ? '→' : '←'}${domPct}%</span>`;
               }
             }
           }
@@ -916,9 +918,9 @@ const App = {
           return `
             <div class="si-partner-row">
               <span class="si-rank">${rankDisplay}</span>
-              <span class="si-arrow" style="color:${aColor}">${arrow}</span>
+              <span class="si-arrow ${aColorClass}">${arrow}</span>
               <span class="si-name">${pName}</span>
-              <div class="si-bar-wrap"><div class="si-bar-fill" style="width:${barPct}%;background:${aColor}"></div></div>
+              <div class="si-bar-wrap"><div class="si-bar-fill ${bgColorClass}" style="--pct: ${barPct}%"></div></div>
               <span class="si-split">${splitBadge}</span>
               <span class="si-val">${mf.fmt(val)}</span>
               <div class="si-actions">
@@ -956,13 +958,13 @@ const App = {
           const x = i * (barW + gap);
           const isCur = years[i] === STATE.year;
           const yLabel = String(years[i]).slice(2);
-          return `<rect x="${x}" y="${H - h}" width="${barW}" height="${h}" rx="2" fill="${isCur ? '#004990' : '#DED9D5'}" ${isCur ? 'stroke="#0077B8" stroke-width="1"' : ''}/><text x="${x + barW / 2}" y="${H + 11}" text-anchor="middle" font-size="7" fill="${isCur ? '#0077B8' : '#AEA29A'}" font-family="Inter,monospace">${yLabel}</text>`;
+          return `<rect class="trend-bar${isCur ? ' cur' : ''}" x="${x}" y="${H - h}" width="${barW}" height="${h}" rx="2"/><text class="trend-label${isCur ? ' cur' : ''}" x="${x + barW / 2}" y="${H + 11}" text-anchor="middle">${yLabel}</text>`;
         })
         .join('');
       html += `
         <div class="si-section">
           <div class="si-label">Trade Trend (2015–${STATE.year})</div>
-          <svg width="${W}" height="${H + 14}" style="width:100%;overflow:visible">${bars}</svg>
+          <svg class="svg-full" width="${W}" height="${H + 14}">${bars}</svg>
         </div>`;
     }
 
@@ -978,14 +980,14 @@ const App = {
       const segments = Object.entries(catTotals)
         .sort((a, b) => b[1] - a[1])
         .map(([cat, val]) => ({ cat, pct: (val / countryTotal) * 100 }));
-      const barSegs = segments.map(s => `<div style="width:${s.pct}%;background:${CONFIG.flowColors[s.cat]};height:100%"></div>`).join('');
+      const barSegs = segments.map(s => `<div class="si-flow-seg ${FC[s.cat]}" style="--pct: ${s.pct}%"></div>`).join('');
       const compRows = segments
         .map(
           s => `
-            <div class="si-comp-row">
-              <div class="si-comp-dot" style="background:${CONFIG.flowColors[s.cat]}"></div>
+            <div class="si-comp-row ${FC[s.cat]}">
+              <div class="si-comp-dot"></div>
               <span class="si-comp-label">${CAT_LABELS_FULL[s.cat]}</span>
-              <span class="si-comp-pct" style="color:${CONFIG.flowColors[s.cat]}">${Math.round(s.pct)}%</span>
+              <span class="si-comp-pct">${Math.round(s.pct)}%</span>
             </div>`
         )
         .join('');
@@ -1026,16 +1028,16 @@ const App = {
 
     // Thresholds calibrated for trade (not market-competition DOJ levels).
     let label;
-    let badge;
+    let hhiTier;
     if (hhi < 0.2) {
       label = 'Diversified';
-      badge = '#72BF44';
+      hhiTier = 'low';
     } else if (hhi < 0.4) {
       label = 'Moderate';
-      badge = '#FBAF17';
+      hhiTier = 'mid';
     } else {
       label = 'Highly concentrated';
-      badge = '#ef4444';
+      hhiTier = 'high';
     }
 
     const W = 240;
@@ -1071,17 +1073,17 @@ const App = {
       <div class="si-section">
         <div class="si-label">Partner Concentration (HHI)</div>
         <div class="si-sublabel">${scopeNote}</div>
-        <div class="si-card">
-          <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-height:130px" preserveAspectRatio="xMidYMid meet">
-            <path d="${arcPath(startA, endA)}" stroke="#DED9D5" stroke-width="9" fill="none" stroke-linecap="round"/>
-            <path d="${arcPath(startA, valA)}" stroke="${badge}" stroke-width="9" fill="none" stroke-linecap="round"/>
+        <div class="si-card" data-hhi="${hhiTier}">
+          <svg class="svg-gauge" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+            <path class="hhi-arc-bg" d="${arcPath(startA, endA)}" stroke-width="9" fill="none" stroke-linecap="round"/>
+            <path class="hhi-arc-filled" d="${arcPath(startA, valA)}" stroke-width="9" fill="none" stroke-linecap="round"/>
             ${tick(0.2)}${tick(0.4)}
             <line x1="${mx1.toFixed(2)}" y1="${my1.toFixed(2)}" x2="${mx2.toFixed(2)}" y2="${my2.toFixed(2)}" stroke="#231F20" stroke-width="2.5" stroke-linecap="round"/>
             <text x="${cx}" y="${cy - 36}" text-anchor="middle" font-size="22" font-weight="700" fill="#231F20" font-family="Inter,monospace">${(hhi * 10000).toFixed(0)}</text>
             <text x="${cx}" y="${cy - 20}" text-anchor="middle" font-size="9" fill="#6E6259" font-family="Inter,sans-serif">HHI score (0–10000)</text>
           </svg>
           <div class="si-badge-wrap">
-            <span class="si-badge" style="background:${badge}22;color:${badge};border-color:${badge}44">${label}</span>
+            <span class="si-badge hhi-badge">${label}</span>
           </div>
           <div class="si-hhi-stats">
             <div><div class="hhi-l">Top 1</div><div class="hhi-v">${top1Pct.toFixed(0)}%</div><div class="hhi-s" title="${top1Name}">${top1Name}</div></div>
@@ -1154,16 +1156,16 @@ const App = {
       const offsetRad = (9 * Math.PI) / 180;
       const expLen = (sectorExp[i] / maxVal) * maxBarLen;
       const impLen = (sectorImp[i] / maxVal) * maxBarLen;
-      const drawBar = (len, angleRad, color) => {
+      const drawBar = (len, angleRad, cls) => {
         if (len < 0.5) return;
         const x1 = cx + innerR * Math.cos(angleRad);
         const y1 = cy + innerR * Math.sin(angleRad);
         const x2 = cx + (innerR + len) * Math.cos(angleRad);
         const y2 = cy + (innerR + len) * Math.sin(angleRad);
-        parts.push(`<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${color}" stroke-width="6" stroke-linecap="round" opacity="0.88"/>`);
+        parts.push(`<line class="${cls}" x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}"/>`);
       };
-      drawBar(expLen, centerRad + offsetRad, '#009EDB');
-      drawBar(impLen, centerRad - offsetRad, '#ED1847');
+      drawBar(expLen, centerRad + offsetRad, 'polar-exp');
+      drawBar(impLen, centerRad - offsetRad, 'polar-imp');
 
       const labelR = innerR + maxBarLen + 14;
       parts.push(`<text x="${(cx + labelR * Math.cos(centerRad)).toFixed(2)}" y="${(cy + labelR * Math.sin(centerRad) + 3).toFixed(2)}" text-anchor="middle" font-size="10" font-weight="700" fill="#AEA29A" font-family="Inter,sans-serif">${labels[i]}</text>`);
@@ -1176,12 +1178,12 @@ const App = {
         <div class="si-label">Trade Fingerprint</div>
         <div class="si-sublabel">${scopeNote}</div>
         <div class="si-card si-card-center">
-          <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:220px" preserveAspectRatio="xMidYMid meet">
+          <svg class="svg-polar" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
             ${parts.join('')}
           </svg>
           <div class="si-chart-footer">
-            <div class="si-legend-item"><div class="si-legend-swatch" style="background:#009EDB"></div><span>Exports</span></div>
-            <div class="si-legend-item"><div class="si-legend-swatch" style="background:#ED1847"></div><span>Imports</span></div>
+            <div class="si-legend-item"><div class="si-legend-swatch swatch-exp"></div><span>Exports</span></div>
+            <div class="si-legend-item"><div class="si-legend-swatch swatch-imp"></div><span>Imports</span></div>
           </div>
           <div class="si-chart-caption">Bar direction = geographic bearing from this country</div>
         </div>
@@ -1257,8 +1259,8 @@ const App = {
         const name = STATE.countryNames[d.pIso] || d.pIso;
         const shortName = name.length > 12 ? `${name.slice(0, 11)}…` : name;
 
-        const impBar = impLen > 0 ? `<rect x="${(leftEdge - impLen).toFixed(1)}" y="${y}" width="${impLen.toFixed(1)}" height="${barH}" rx="2" fill="#ED1847" opacity="0.78"/>` : '';
-        const expBar = expLen > 0 ? `<rect x="${rightEdge}" y="${y}" width="${expLen.toFixed(1)}" height="${barH}" rx="2" fill="#009EDB" opacity="0.78"/>` : '';
+        const impBar = impLen > 0 ? `<rect class="butterfly-imp" x="${(leftEdge - impLen).toFixed(1)}" y="${y}" width="${impLen.toFixed(1)}" height="${barH}" rx="2"/>` : '';
+        const expBar = expLen > 0 ? `<rect class="butterfly-exp" x="${rightEdge}" y="${y}" width="${expLen.toFixed(1)}" height="${barH}" rx="2"/>` : '';
         const nameEl = `<text x="${cx}" y="${y + barH - 1}" text-anchor="middle" font-size="7.5" fill="#231F20" font-family="Inter,sans-serif">${shortName}</text>`;
 
         return `${impBar}${expBar}${nameEl}`;
@@ -1268,8 +1270,8 @@ const App = {
     const totalH = topPartners.length * rowGap + barH;
 
     const grid = `
-      <text x="${(leftEdge - barMaxLen / 2).toFixed(0)}" y="-4" text-anchor="middle" font-size="7" font-weight="700" fill="#ED1847" font-family="Inter,sans-serif">← Imports</text>
-      <text x="${(rightEdge + barMaxLen / 2).toFixed(0)}" y="-4" text-anchor="middle" font-size="7" font-weight="700" fill="#009EDB" font-family="Inter,sans-serif">Exports →</text>
+      <text class="butterfly-axis-imp" x="${(leftEdge - barMaxLen / 2).toFixed(0)}" y="-4" text-anchor="middle">← Imports</text>
+      <text class="butterfly-axis-exp" x="${(rightEdge + barMaxLen / 2).toFixed(0)}" y="-4" text-anchor="middle">Exports →</text>
       <line x1="${leftEdge}" y1="0" x2="${leftEdge}" y2="${totalH}" stroke="#E2E8F0" stroke-width="0.6" stroke-dasharray="2,2"/>
       <line x1="${rightEdge}" y1="0" x2="${rightEdge}" y2="${totalH}" stroke="#E2E8F0" stroke-width="0.6" stroke-dasharray="2,2"/>`;
 
@@ -1280,7 +1282,7 @@ const App = {
         <div class="si-label">Bilateral Trade Split</div>
         <div class="si-sublabel">${scopeNote}</div>
         <div class="si-card">
-          <svg viewBox="0 -10 ${W} ${totalH + 12}" style="width:100%;overflow:visible" preserveAspectRatio="xMidYMid meet">
+          <svg class="svg-full" viewBox="0 -10 ${W} ${totalH + 12}" preserveAspectRatio="xMidYMid meet">
             ${grid}
             ${rows}
           </svg>
@@ -1320,7 +1322,7 @@ const App = {
       if (prevVal > 0 && curVal > 0) {
         const yoy = ((curVal - prevVal) / prevVal) * 100;
         const dir = yoy >= 0 ? 'grew' : 'declined';
-        const col = yoy >= 0 ? '#72BF44' : '#ED1847';
+        const yoyClass = yoy >= 0 ? 'col-positive' : 'col-negative';
         const firstNZ = years.findIndex(y => yearlyTotals[y] > 0);
         let cagrStr = '';
         if (firstNZ >= 0 && curIdx > firstNZ && yearlyTotals[years[firstNZ]] > 0) {
@@ -1328,7 +1330,7 @@ const App = {
           const cagr = ((curVal / yearlyTotals[years[firstNZ]]) ** (1 / n) - 1) * 100;
           if (Number.isFinite(cagr)) cagrStr = ` (CAGR ${cagr >= 0 ? '+' : ''}${cagr.toFixed(1)}% since ${years[firstNZ]})`;
         }
-        sentences.push(`Trade volumes <strong style="color:${col}">${dir} ${Math.abs(yoy).toFixed(1)}%</strong> from ${years[curIdx - 1]} to ${STATE.year}${cagrStr}.`);
+        sentences.push(`Trade volumes <strong class="${yoyClass}">${dir} ${Math.abs(yoy).toFixed(1)}%</strong> from ${years[curIdx - 1]} to ${STATE.year}${cagrStr}.`);
       }
     }
 
@@ -1359,8 +1361,7 @@ const App = {
       }
       if (domCat && countryTotal > 0) {
         const domPct = Math.round((domCat[1] / countryTotal) * 100);
-        const catCol = CONFIG.flowColors[domCat[0]];
-        s += ` <strong style="color:${catCol}">${CAT_LABELS_ARROW[domCat[0]]}</strong> flows dominate at ${domPct}%.`;
+        s += ` <strong class="cat-strong ${FC[domCat[0]]}">${CAT_LABELS_ARROW[domCat[0]]}</strong> flows dominate at ${domPct}%.`;
       }
       if (s) sentences.push(s);
     }
@@ -1415,10 +1416,10 @@ const App = {
     }
 
     const isNetExporter = stats.netBalance >= 0;
-    const balanceColor = isNetExporter ? '#009EDB' : '#ED1847';
     const balanceSign = isNetExporter ? '+' : '';
     const roleLabel = isNetExporter ? 'Net Exporter' : 'Net Importer';
     const roleClass = isNetExporter ? 'exp' : 'imp';
+    const balanceClass = isNetExporter ? 'col-exp' : 'col-imp';
 
     content += `
       <div class="tt-grid">
@@ -1428,7 +1429,7 @@ const App = {
         </div>
         <div class="tt-card">
           <div class="tt-card-label">${mf.netLabel.replace(':', '')}</div>
-          <div class="tt-card-value" style="color:${balanceColor}">${balanceSign}${mf.fmt(Math.abs(stats.netBalance))}</div>
+          <div class="tt-card-value ${balanceClass}">${balanceSign}${mf.fmt(Math.abs(stats.netBalance))}</div>
         </div>
       </div>
       <div class="tt-role-wrap">
@@ -1466,13 +1467,14 @@ const App = {
           const barPct = Math.round((val / maxPVal) * 100);
           const isExportTo = !!partnerExports[pIso];
           const arrow = isExportTo ? '→' : '←';
-          const arrowColor = isExportTo ? '#009EDB' : '#ED1847';
+          const arrowClass = isExportTo ? 'col-exp' : 'col-imp';
+          const barBgClass = isExportTo ? 'bg-exp' : 'bg-imp';
           return `
             <div class="tt-partner-row">
-              <span class="tt-partner-arrow" style="color:${arrowColor}">${arrow}</span>
+              <span class="tt-partner-arrow ${arrowClass}">${arrow}</span>
               <span class="tt-partner-name">${shortName}</span>
               <div class="tt-partner-bar">
-                <div class="tt-partner-bar-fill" style="width:${barPct}%;background:${arrowColor}"></div>
+                <div class="tt-partner-bar-fill ${barBgClass}" style="--pct: ${barPct}%"></div>
               </div>
               <span class="tt-partner-val">${mf.fmt(val)}</span>
             </div>`;
@@ -1500,8 +1502,8 @@ const App = {
         .sort((a, b) => b[1] - a[1])
         .map(([cat, val]) => ({ cat, pct: (val / countryTotal) * 100 }));
 
-      const barSegments = segments.map(s => `<div style="width:${s.pct}%;height:100%;background:${CONFIG.flowColors[s.cat]}"></div>`).join('');
-      const labelSpans = segments.map(s => `<span class="tt-flow-label" style="color:${CONFIG.flowColors[s.cat]}">${CAT_LABELS_SHORT[s.cat]} ${Math.round(s.pct)}%</span>`).join('<span class="tt-flow-sep">·</span>');
+      const barSegments = segments.map(s => `<div class="tt-flow-seg ${FC[s.cat]}" style="--pct: ${s.pct}%"></div>`).join('');
+      const labelSpans = segments.map(s => `<span class="tt-flow-label ${FC[s.cat]}">${CAT_LABELS_SHORT[s.cat]} ${Math.round(s.pct)}%</span>`).join('<span class="tt-flow-sep">·</span>');
 
       content += `
         <div class="tt-section has-extra-margin">
@@ -1529,7 +1531,7 @@ const App = {
           const h = Math.max(1, (v / maxYV) * H);
           const x = i * (barW + gap);
           const isCur = years[i] === STATE.year;
-          return `<rect x="${x}" y="${H - h}" width="${barW}" height="${h}" rx="1.5" fill="${isCur ? '#004990' : '#DED9D5'}" ${isCur ? 'stroke="#0077B8" stroke-width="0.5"' : ''}/>`;
+          return `<rect class="trend-bar${isCur ? ' cur' : ''}" x="${x}" y="${H - h}" width="${barW}" height="${h}" rx="1.5"/>`;
         })
         .join('');
 
@@ -1537,9 +1539,8 @@ const App = {
       let yoyHtml = '';
       if (curIdx > 0 && yVals[curIdx - 1] > 0) {
         const yoy = ((yVals[curIdx] - yVals[curIdx - 1]) / yVals[curIdx - 1]) * 100;
-        const yoyCol = yoy >= 0 ? '#72BF44' : '#ED1847';
         const yoySign = yoy >= 0 ? '+' : '';
-        yoyHtml = `<span class="tt-yoy" style="color:${yoyCol}">${yoySign}${yoy.toFixed(0)}% YoY</span>`;
+        yoyHtml = `<span class="tt-yoy ${yoy >= 0 ? 'col-positive' : 'col-negative'}">${yoySign}${yoy.toFixed(0)}% YoY</span>`;
       }
       let cagrHtml = '';
       const firstNonZeroIdx = yVals.findIndex(v => v > 0);
@@ -1547,8 +1548,7 @@ const App = {
         const n = curIdx - firstNonZeroIdx;
         const cagr = ((yVals[curIdx] / yVals[firstNonZeroIdx]) ** (1 / n) - 1) * 100;
         if (Number.isFinite(cagr)) {
-          const cagrCol = cagr >= 0 ? '#72BF44' : '#ED1847';
-          cagrHtml = `<span class="tt-cagr" style="color:${cagrCol}">CAGR ${cagr >= 0 ? '+' : ''}${cagr.toFixed(1)}%</span>`;
+          cagrHtml = `<span class="tt-cagr ${cagr >= 0 ? 'col-positive' : 'col-negative'}">CAGR ${cagr >= 0 ? '+' : ''}${cagr.toFixed(1)}%</span>`;
         }
       }
 
@@ -1586,7 +1586,7 @@ const App = {
   },
 
   _positionTooltip(tooltip, event) {
-    tooltip.style.display = 'block';
+    tooltip.classList.add('visible');
     const pad = 15;
 
     // Compute mouse position relative to the tooltip's container (map area)
@@ -1610,12 +1610,12 @@ const App = {
     if (x < pad) x = pad;
     if (y < pad) y = pad;
 
-    tooltip.style.left = `${x}px`;
-    tooltip.style.top = `${y}px`;
+    tooltip.style.setProperty('--tooltip-x', `${x}px`);
+    tooltip.style.setProperty('--tooltip-y', `${y}px`);
   },
 
   hideTooltip() {
-    qs('.tooltip').style.display = 'none';
+    qs('.tooltip').classList.remove('visible');
   },
 
   toggleMobileLegend() {

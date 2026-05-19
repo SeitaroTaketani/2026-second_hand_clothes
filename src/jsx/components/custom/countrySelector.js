@@ -114,7 +114,7 @@ class CountrySelector {
 
     const row = document.createElement('div');
     row.className = 'group-option';
-    row.style.paddingLeft = `${8 + indent * 14}px`;
+    row.style.setProperty('--indent', indent);
 
     const toggle = document.createElement('button');
     toggle.type = 'button';
@@ -193,7 +193,7 @@ class CountrySelector {
   _addCountryItem(parent, code, name, indentLevel = 0) {
     const item = document.createElement('div');
     item.className = 'country-option';
-    item.style.paddingLeft = `${8 + indentLevel * 14}px`;
+    item.style.setProperty('--indent', indentLevel);
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';

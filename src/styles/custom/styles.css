@@ -130,6 +130,8 @@
     border-radius: var(--radius-sm);
     box-shadow: var(--shadow-md);
     transition: opacity 0.15s ease;
+    left: var(--tooltip-x, 0);
+    top: var(--tooltip-y, 0);
   }
 
   /* Loader overlay */
@@ -269,7 +271,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 5px 8px;
+    padding: 5px 8px 5px calc(8px + var(--indent, 0) * 14px);
     font-size: var(--fs-label);
     cursor: pointer;
     border-radius: var(--radius-sm);
@@ -336,7 +338,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 3px 8px;
+    padding: 3px 8px 3px calc(8px + var(--indent, 0) * 14px);
     font-size: var(--fs-label);
     cursor: pointer;
     color: var(--ungrey-dark);
@@ -387,6 +389,28 @@
     color: var(--ungrey);
     font-size: 12px;
     padding: 32px 0;
+  }
+
+  /* ── Picker z-index elevation when open (replaces inline style.zIndex) ── */
+  .picker-wrapper.picker-is-open {
+    z-index: 60;
+  }
+
+  /* ── Search filter: parent class hides section/group rows, expands children ── */
+  .country-picker-menu.is-searching .picker-section-header,
+  .country-picker-menu.is-searching .group-option {
+    display: none;
+  }
+  .country-picker-menu.is-searching .group-children {
+    display: block;
+  }
+  .country-option.search-hidden {
+    display: none;
+  }
+
+  /* ── Group children default display (when .hidden is not present) ── */
+  .group-children {
+    display: block;
   }
 }
 

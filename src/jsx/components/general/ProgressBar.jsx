@@ -20,7 +20,7 @@ function ProgressBar({ selector }) {
 
       const progress = ((scrollTop - start) / height) * 100;
 
-      progressRef.current.style.width = `${Math.min(Math.max(progress, 0), 100)}%`;
+      progressRef.current.style.setProperty('--progress', `${Math.min(Math.max(progress, 0), 100)}%`);
 
       ticking = false;
     };
