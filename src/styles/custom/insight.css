@@ -845,6 +845,10 @@
   /* ── Generic SVG axis / chart labels ── */
   .axis-label { fill: var(--ungrey-text); font-size: 7px; font-family: "Inter", monospace; }
 
+  /* ── Compare modal trend polylines ── */
+  .chart-line-exp { fill: none; stroke: var(--unblue); stroke-width: 1.5; opacity: 0.8; }
+  .chart-line-compare { fill: none; stroke: #b06e2a; stroke-width: 1.5; opacity: 0.8; }
+
   /* ── Tooltip visibility state ── */
   .tooltip.visible { display: block; }
 }

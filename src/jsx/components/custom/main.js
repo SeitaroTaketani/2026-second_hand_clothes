@@ -757,8 +757,8 @@ const App = {
           <div class="si-legend-item"><div class="si-legend-swatch swatch-yellow"></div><span>${nameB}</span></div>
         </div>
         <svg class="svg-full" width="${W}" height="${H + 16}">
-          <polyline points="${points(totA)}" fill="none" stroke="#009EDB" stroke-width="1.5" opacity="0.8"/>
-          <polyline points="${points(totB)}" fill="none" stroke="#B06E2A" stroke-width="1.5" opacity="0.8"/>
+          <polyline class="chart-line-exp" points="${points(totA)}"/>
+          <polyline class="chart-line-compare" points="${points(totB)}"/>
           ${dotsA}${dotsB}${xLabels}
         </svg>
       </div>`;

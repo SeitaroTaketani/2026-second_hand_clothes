@@ -327,7 +327,7 @@ export const TradeMap = {
   },
 
   updateDimensions() {
-    this.svg.attr('width', '100%').attr('height', '100%').attr('viewBox', `0 0 ${this.width} ${this.height}`).style('background', '#F3F8FD');
+    this.svg.attr('width', '100%').attr('height', '100%').attr('viewBox', `0 0 ${this.width} ${this.height}`);
   },
 
   updateProjection() {
@@ -555,7 +555,6 @@ export const TradeMap = {
 
   renderFlows() {
     if (!this.svg) return;
-    this.svg.style('display', 'block');
     if (this.render2DFlows) this.render2DFlows();
   },
 
@@ -666,12 +665,9 @@ export const TradeMap = {
     const arcsEnter = arcs
       .enter()
       .append('path')
-      .attr('class', 'trade-arc')
+      .attr('class', d => `trade-arc ${FC[d.flowCategory]}`)
       .attr('id', d => `arc-${d.exporter}-${d.importer}`)
-      .style('fill', 'none')
-      .style('mix-blend-mode', 'multiply')
       .style('opacity', 0)
-      .attr('stroke', d => CONFIG.flowColors[d.flowCategory])
       .on('click', (event, d) => {
         event.stopPropagation();
         root.dispatchEvent(new CustomEvent('shc:arc-click', { detail: { exporter: d.exporter, importer: d.importer } }));
@@ -696,6 +692,7 @@ export const TradeMap = {
 
     arcsEnter
       .merge(arcs)
+      .attr('class', d => `trade-arc ${FC[d.flowCategory]}`)
       .attr('id', d => `arc-${d.exporter}-${d.importer}`)
       .attr('data-original-width', d => edgeWidthScale(d.netValue))
       .attr('data-base-opacity', d => opacityScale(d.netValue))
@@ -703,7 +700,6 @@ export const TradeMap = {
       .transition()
       .duration(750)
       .ease(easeCubicOut)
-      .attr('stroke', d => CONFIG.flowColors[d.flowCategory])
       .attr('stroke-width', d => edgeWidthScale(d.netValue) / currentK)
       .style('opacity', arcOpacity);
 
@@ -1024,11 +1020,9 @@ export const TradeMap = {
       const intensity = Math.min(1, d.netValue / maxVal);
       const count = 1 + Math.round(intensity * 2);
       const dur = `${(4.5 - intensity * 2.3).toFixed(2)}s`;
-      const color = CONFIG.flowColors[d.flowCategory] || '#0284c7';
-
       for (let i = 0; i < count; i++) {
         const offset = i / count;
-        const particle = layer.append('circle').attr('class', 'trade-particle').attr('r', 1.6).attr('fill', color).attr('stroke', '#ffffff').attr('stroke-width', 0.4).attr('opacity', 0.95);
+        const particle = layer.append('circle').attr('class', `trade-particle ${FC[d.flowCategory]}`).attr('r', 1.6).attr('stroke', '#ffffff').attr('stroke-width', 0.4).attr('opacity', 0.95);
 
         const motion = particle
           .append('animateMotion')

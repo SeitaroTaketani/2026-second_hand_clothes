@@ -74,6 +74,11 @@
     max-height: 600px;
     width: 100%;
     z-index: 0;
+
+    svg {
+      display: block;
+      background: #f3f8fd;
+    }
   }
 
   .map-area {
@@ -177,6 +182,7 @@
 
   .trade-arc {
     fill: none;
+    stroke: var(--flow-color, #0284c7);
     stroke-linecap: round;
     cursor: pointer;
     pointer-events: stroke;
@@ -210,6 +216,7 @@
   }
 
   .trade-particle {
+    fill: var(--flow-color, #0284c7);
     pointer-events: none;
     filter: drop-shadow(0 0 1.5px rgb(255 255 255 / 90%));
   }
