@@ -1,16 +1,15 @@
-#main-header {
-  border-bottom: none !important;
-}
-#kpi-bar {
-  border-top: none !important;
-  box-shadow: none !important;
-}
+/* Overrides for the embedded build: visual polish that should stay scoped to the app */
 
-body {
-  border-bottom: 4px solid #009edb !important;
-}
-
-#kpi-bar,
-#legend-panel {
-  background-color: #f2f8fc !important;
+#app-root-2026-second_hand_clothes {
+  .main-header {
+    border-bottom: none;
+  }
+  .kpi-bar {
+    border-top: none;
+    box-shadow: none;
+    background-color: var(--unblue-bg);
+  }
+  .legend-panel {
+    background-color: var(--unblue-bg);
+  }
 }

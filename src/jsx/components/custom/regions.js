@@ -3,7 +3,7 @@ export const RegionConfig = {
   regions: {
     Global: { center: [0, 20], scale: 1 },
     Africa: { center: [20, 0], scale: 2.5 },
-    Americas: { center: [-80, 10], scale: 1.8 }, // 北米・南米全体が見える中心位置
+    Americas: { center: [-80, 10], scale: 1.8 }, // Centered so both North and South America are visible
     Asia: { center: [100, 30], scale: 2.0 },
     Europe: { center: [15, 50], scale: 3.5 },
     Oceania: { center: [140, -25], scale: 3.0 }

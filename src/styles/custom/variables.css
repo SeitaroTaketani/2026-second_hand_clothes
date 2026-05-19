@@ -1,39 +1,33 @@
 @import url('./colors.css');
 
-/* ── Layout ─────────────────────────────────────────────── */
-
-:root {
+#app-root-2026-second_hand_clothes {
+  /* Layout */
   --header-height-desktop: auto;
   --content-max-width: 1600px;
   --panel-legend-width: clamp(160px, 14vw, 220px);
   --panel-insight-width: clamp(280px, 25vw, 380px);
 
-  /* ── Typography ───────────────────────────────────────── */
-
+  /* Typography */
   --font-family: Inter, Arial, sans-serif;
   --font-mono: 'Inter', ui-monospace, monospace;
 
-  /* ── Spacing ───────────────────────────────────────────── */
-
+  /* Spacing */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
 
-  /* ── Border radius ─────────────────────────────────────── */
-
+  /* Border radius */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-xl: 12px;
 
-  /* ── Breakpoints ───────────────────────────────────────── */
-
+  /* Breakpoints */
   --bp-md: 768px;
   --bp-xl: 1280px;
 
-  /* ── Font sizes ────────────────────────────────────────── */
-
+  /* Font sizes */
   --fs-micro: 0.4375rem; /* 7px */
   --fs-xxs: 0.5rem; /* 8px */
   --fs-xs: 0.5625rem; /* 9px */
@@ -44,8 +38,10 @@
   --fs-md: 0.9375rem; /* 15px */
   --fs-xl: 1.5rem; /* 24px */
 
-  /* ── Shadows ───────────────────────────────────────────── */
+  /* Mobile viewport height (set dynamically by JS to handle iOS Safari URL bar) */
+  --vh: 1vh;
 
+  /* Shadows */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.15);

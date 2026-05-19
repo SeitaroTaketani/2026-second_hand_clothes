@@ -1,292 +1,261 @@
 @import url('./variables.css');
 
-/* ── Shared modal backdrop ────────────────────────────────────── */
-
-.modal-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgb(0 0 0 / 50%);
-  backdrop-filter: blur(2px);
-}
-
-/* ── Shared modal card ────────────────────────────────────────── */
-
-.modal-card {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-
-  max-height: calc(100% - 32px);
-
-  background: #fff;
-  border: 1px solid var(--ungrey-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-
-  .modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    padding: 14px 20px;
-
-    background: var(--unblue-bg);
-    border-bottom: 1px solid var(--ungrey-bg);
-
-    flex-shrink: 0;
-
-    .modal-title {
-      font-size: var(--fs-body);
-      font-weight: 700;
-      color: var(--ungrey-dark);
-    }
-
-    .modal-subtitle {
-      margin-top: 2px;
-      font-size: var(--fs-sm);
-      color: var(--ungrey-text);
-    }
-
-    .btn-close {
-      padding: 4px;
-
-      color: var(--ungrey-text);
-
-      background: transparent;
-      border: none;
-      border-radius: var(--radius-lg);
-
-      cursor: pointer;
-      transition:
-        background 0.12s,
-        color 0.12s;
-
-      &:hover {
-        color: var(--ungrey-dark);
-        background: var(--ungrey-bg);
-      }
-    }
-  }
-
-  .modal-body {
-    flex: 1;
-    padding: 16px 20px;
-
-    overflow-y: auto;
-
-    &::-webkit-scrollbar {
-      width: 4px;
-    }
-
-    &::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    &::-webkit-scrollbar-thumb {
-      background: var(--ungrey-border);
-      border-radius: 2px;
-    }
-  }
-}
-
-/* ── Arc Detail Modal ─────────────────────────────────────────── */
-
-#arc-modal {
-  position: absolute;
-  inset: 0;
-  z-index: 40;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  animation: modal-fade-in 0.18s ease;
-
-  .modal-card {
-    width: 520px;
-    max-width: 95vw;
-  }
-}
-
-/* ── Compare Modal ───────────────────────────────────────────── */
-
-#compare-modal {
-  position: absolute;
-  inset: 0;
-  z-index: 40;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  animation: modal-fade-in 0.18s ease;
-
-  .modal-card {
-    width: 680px;
-    max-width: 95vw;
-  }
-}
-
-/* ── Methodology Modal ───────────────────────────────────────── */
-
-#methodology-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  animation: modal-fade-in 0.18s ease;
+#app-root-2026-second_hand_clothes {
+  /* Shared modal backdrop */
 
   .modal-backdrop {
-    position: fixed;
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 50%);
+    backdrop-filter: blur(2px);
   }
 
-  .methodology-card {
-    width: 640px;
-    max-width: calc(100vw - 32px);
-    max-height: calc(100vh - 48px);
+  /* Shared modal card */
+
+  .modal-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100% - 32px);
+    background: #fff;
+    border: 1px solid var(--ungrey-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: var(--unblue-bg);
+      border-bottom: 1px solid var(--ungrey-bg);
+      flex-shrink: 0;
+
+      .modal-title {
+        font-size: var(--fs-body);
+        font-weight: 700;
+        color: var(--ungrey-dark);
+      }
+
+      .modal-subtitle {
+        margin-top: 2px;
+        font-size: var(--fs-sm);
+        color: var(--ungrey-text);
+      }
+
+      .btn-close {
+        padding: 4px;
+        color: var(--ungrey-text);
+        background: transparent;
+        border: none;
+        border-radius: var(--radius-lg);
+        cursor: pointer;
+        transition:
+          background 0.12s,
+          color 0.12s;
+
+        &:hover {
+          color: var(--ungrey-dark);
+          background: var(--ungrey-bg);
+        }
+      }
+    }
+
+    .modal-body {
+      flex: 1;
+      padding: 16px 20px;
+      overflow-y: auto;
+    }
   }
-}
 
-/* ── Method content ───────────────────────────────────────────── */
+  /* Arc Detail Modal */
 
-.method-body {
-  font-size: var(--fs-base);
-  line-height: 1.6;
-  color: var(--ungrey-dark);
-}
-
-.method-section {
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--ungrey-bg);
-
-  &.method-section-last {
-    margin-bottom: 0;
-    padding-bottom: 0;
-    border-bottom: none;
-  }
-}
-
-.method-section-title {
-  margin: 0 0 8px;
-
-  font-size: var(--fs-sm);
-  font-weight: 700;
-  color: var(--unblue-dark);
-
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.method-note {
-  margin: 0 0 8px;
-
-  font-size: var(--fs-label);
-  line-height: 1.5;
-  color: var(--ungrey-text);
-}
-
-.method-dl {
-  display: grid;
-  grid-template-columns: 160px 1fr;
-  gap: 4px 12px;
-
-  margin: 0;
-
-  dt {
+  .arc-modal {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
     display: flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    animation: shc-modal-fade-in 0.18s ease;
 
-    padding: 3px 0;
+    .modal-card {
+      width: 520px;
+      max-width: 95vw;
+    }
+  }
 
-    font-size: var(--fs-label);
-    font-weight: 600;
+  /* Compare Modal */
+
+  .compare-modal {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: shc-modal-fade-in 0.18s ease;
+
+    .modal-card {
+      width: 680px;
+      max-width: 95vw;
+    }
+  }
+
+  /* Methodology Modal */
+
+  .methodology-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: shc-modal-fade-in 0.18s ease;
+
+    .modal-backdrop {
+      position: fixed;
+    }
+
+    .methodology-card {
+      width: 640px;
+      max-width: calc(100vw - 32px);
+      max-height: calc(100vh - 48px);
+    }
+  }
+
+  /* Method content */
+
+  .method-body {
+    font-size: var(--fs-base);
+    line-height: 1.6;
     color: var(--ungrey-dark);
   }
 
-  dd {
-    margin: 0;
-    padding: 3px 0;
+  .method-section {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--ungrey-bg);
 
+    &.method-section-last {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+  }
+
+  .method-section-title {
+    margin: 0 0 8px;
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--unblue-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .method-note {
+    margin: 0 0 8px;
     font-size: var(--fs-label);
+    line-height: 1.5;
     color: var(--ungrey-text);
   }
-}
 
-.method-flow-dot {
-  display: inline-block;
-  width: 10px;
-  height: 3px;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
+  .method-dl {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 4px 12px;
+    margin: 0;
 
-.method-body code {
-  padding: 1px 4px;
+    dt {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 0;
+      font-size: var(--fs-label);
+      font-weight: 600;
+      color: var(--ungrey-dark);
+    }
 
-  font-family: var(--font-mono);
-  font-size: var(--fs-sm);
-
-  color: var(--ungrey-dark);
-  background: var(--ungrey-bg);
-
-  border-radius: 3px;
-}
-
-.method-cite {
-  padding: 8px 12px;
-  margin: 0;
-
-  font-size: var(--fs-label);
-  color: var(--ungrey-text);
-
-  background: var(--ungrey-bg);
-  border-left: 3px solid var(--unblue);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-}
-
-/* ── Footer link ─────────────────────────────────────────────── */
-
-.footer-method-link {
-  margin-top: 4px;
-}
-
-.footer-link-btn {
-  padding: 0;
-
-  font-family: inherit;
-  font-size: inherit;
-
-  color: var(--unblue-dark);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-
-  background: none;
-  border: none;
-
-  cursor: pointer;
-  transition: color 0.15s;
-
-  &:hover {
-    color: var(--unblue);
-  }
-}
-
-/* ── Animation ──────────────────────────────────────────────── */
-
-@keyframes modal-fade-in {
-  from {
-    opacity: 0;
-    transform: scale(0.97);
+    dd {
+      margin: 0;
+      padding: 3px 0;
+      font-size: var(--fs-label);
+      color: var(--ungrey-text);
+    }
   }
 
-  to {
-    opacity: 1;
-    transform: scale(1);
+  .method-flow-dot {
+    display: inline-block;
+    width: 10px;
+    height: 3px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .method-flow-dot-ns {
+    background: var(--unblue);
+  }
+  .method-flow-dot-sn {
+    background: var(--ungreen);
+  }
+  .method-flow-dot-ss {
+    background: var(--unyellow);
+  }
+  .method-flow-dot-nn {
+    background: var(--ungrey);
+  }
+
+  .method-body code {
+    padding: 1px 4px;
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+    color: var(--ungrey-dark);
+    background: var(--ungrey-bg);
+    border-radius: 3px;
+  }
+
+  .method-cite {
+    padding: 8px 12px;
+    margin: 0;
+    font-size: var(--fs-label);
+    color: var(--ungrey-text);
+    background: var(--ungrey-bg);
+    border-left: 3px solid var(--unblue);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .method-hhi-band {
+    display: inline-block;
+  }
+  .method-hhi-band-diversified {
+    color: var(--ungreen);
+  }
+  .method-hhi-band-moderate {
+    color: var(--unyellow);
+  }
+  .method-hhi-band-concentrated {
+    color: #ef4444;
+  }
+
+  /* Footer link */
+
+  .footer-method-link {
+    margin-top: 4px;
+  }
+
+  .footer-link-btn {
+    padding: 0;
+    font-family: inherit;
+    font-size: inherit;
+    color: var(--unblue-dark);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: color 0.15s;
+
+    &:hover {
+      color: var(--unblue);
+    }
   }
 }

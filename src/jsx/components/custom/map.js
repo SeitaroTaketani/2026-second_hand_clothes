@@ -1,9 +1,14 @@
-import * as d3 from 'd3';
+import { ascending, max as d3max, sum as d3sum, easeCubicOut, easeElasticOut, format, geoGraticule, geoNaturalEarth1, geoPath, interpolateHcl, quantile, scaleLinear, scaleSqrt, select, zoom, zoomIdentity, zoomTransform } from 'd3';
+
 import { CONFIG, STATE } from './config.js';
 import { RegionConfig } from './regions.js';
 
+const getRoot = () => window.appRef.current;
+const qs = sel => window.appRef.current.querySelector(sel);
+
 export const TradeMap = {
-  // This should be in a separate file.
+  // Numeric ISO 3166 → ISO 3-letter code mapping.
+  // Used to translate the codes embedded in the TopoJSON feature properties.
   isoMap: {
     4: 'AFG',
     8: 'ALB',
@@ -186,7 +191,7 @@ export const TradeMap = {
     716: 'ZWE'
   },
 
-  // ── 2D (D3.js) state
+  // 2D (D3.js) state
   svg: null,
   g: null,
   projection: null,
@@ -196,7 +201,7 @@ export const TradeMap = {
   width: 0,
   height: 0,
 
-  // ── Focus mode state (insight panel spotlight)
+  // Focus mode state (insight panel spotlight)
   focusedIso: null,
   searouteMode: false,
 
@@ -207,13 +212,13 @@ export const TradeMap = {
   // Lazy-computed reverse of isoMap: iso3 → numeric string
   _reverseIsoMap: null,
 
-  // ── Route path cache: "exp|imp" → SVG path string (invalidated on resize)
+  // Route path cache: "exp|imp" → SVG path string (invalidated on resize)
   _routePathCache: null,
 
-  // ── Legend dirty-check: skip full DOM rebuild when inputs haven't changed
+  // Legend dirty-check: skip full DOM rebuild when inputs haven't changed
   _lastLegendKey: null,
 
-  // ── Zoom rAF batching: pending transform so expensive selectAll runs once per frame
+  // Zoom rAF batching: pending transform so expensive selectAll runs once per frame
   _zoomRaf: null,
   _pendingZoomK: 1,
 
@@ -247,19 +252,19 @@ export const TradeMap = {
     return group;
   },
 
-  // ── Shared compact number formatter (no currency symbol) used in renderLegend
+  // Shared compact number formatter (no currency symbol) used in renderLegend
   _fmtShort(v) {
     const a = Math.abs(v);
     const s = v < 0 ? '-' : '';
-    if (a >= 1e9) return `${s + d3.format('.2f')(a / 1e9)}B`;
-    if (a >= 1e6) return `${s + d3.format('.2f')(a / 1e6)}M`;
-    if (a >= 1e3) return `${s + d3.format('.2f')(a / 1e3)}K`;
-    return s + d3.format(',.0f')(a);
+    if (a >= 1e9) return `${s + format('.2f')(a / 1e9)}B`;
+    if (a >= 1e6) return `${s + format('.2f')(a / 1e6)}M`;
+    if (a >= 1e3) return `${s + format('.2f')(a / 1e3)}K`;
+    return s + format(',.0f')(a);
   },
 
-  // ── 1. Initialization
+  // 1. Initialization
   init() {
-    const container = document.getElementById('map-container');
+    const container = qs('.map-container');
     this.width = container.getBoundingClientRect().width;
     this.height = container.getBoundingClientRect().height;
 
@@ -271,7 +276,8 @@ export const TradeMap = {
   },
 
   init2D(container) {
-    this.svg = d3.select(container).append('svg').attr('class', 'map-2d-layer').style('position', 'absolute').style('top', '0').style('left', '0').style('z-index', '1').style('touch-action', 'none'); // スマホでのブラウザスクロールを無効化し、地図のパン操作を可能にする
+    // Disable native touch scrolling so the map can capture pan/pinch gestures
+    this.svg = select(container).append('svg').attr('class', 'map-2d-layer').style('position', 'absolute').style('top', '0').style('left', '0').style('z-index', '1').style('touch-action', 'none');
 
     const defs = this.svg.append('defs');
     const hatch = defs.append('pattern').attr('id', 'aksai-chin-hatch').attr('patternUnits', 'userSpaceOnUse').attr('width', 2).attr('height', 2).attr('patternTransform', 'rotate(45)');
@@ -279,10 +285,10 @@ export const TradeMap = {
     hatch.append('line').attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 2).attr('stroke', '#AEA29A').attr('stroke-width', 0.8);
 
     this.g = this.svg.append('g');
-    this._graticuleGeo = d3.geoGraticule()(); // GeoJSONは不変なので一度だけ生成
+    // GeoJSON graticule is immutable, generate once
+    this._graticuleGeo = geoGraticule()();
 
-    this.zoomBehavior = d3
-      .zoom()
+    this.zoomBehavior = zoom()
       .scaleExtent([0.2, 8])
       .on('zoom', event => {
         // Apply the transform immediately so panning feels instant.
@@ -327,7 +333,7 @@ export const TradeMap = {
     const yTop = this.height * (isPortrait ? 0.02 : 0.06);
     const yBot = this.height * (isPortrait ? 0.02 : 0.12);
 
-    this.projection = d3.geoNaturalEarth1().fitExtent(
+    this.projection = geoNaturalEarth1().fitExtent(
       [
         [0, yTop],
         [this.width, this.height - yBot]
@@ -335,7 +341,7 @@ export const TradeMap = {
       { type: 'Sphere' }
     );
 
-    this.path = d3.geoPath().projection(this.projection);
+    this.path = geoPath().projection(this.projection);
   },
 
   zoomToRegion(regionName) {
@@ -347,7 +353,7 @@ export const TradeMap = {
     const [targetLon, targetLat] = config.center;
     let targetScale = config.scale;
 
-    // Global表示かつスマホ（縦長画面）の場合、地図が横幅にすっぽり収まるまで縮小(k < 1)する
+    // On portrait mobile, shrink (k < 1) so the global map fits the viewport width
     if (regionName === 'Global' && this.height > this.width) {
       const baseScaleX = this.width / 6.28;
       const currentBaseScale = this.projection.scale();
@@ -357,16 +363,16 @@ export const TradeMap = {
     const projectedPoint = this.projection([targetLon, targetLat]);
     if (!projectedPoint) return;
 
-    const k = Math.max(0.2, targetScale); // 下限を0.2に制限
+    const k = Math.max(0.2, targetScale); // Clamp to a minimum scale of 0.2
     const tx = this.width / 2 - projectedPoint[0] * k;
     const ty = this.height / 2 - projectedPoint[1] * k;
 
-    const transform = d3.zoomIdentity.translate(tx, ty).scale(k);
+    const transform = zoomIdentity.translate(tx, ty).scale(k);
 
     this.svg.transition().duration(1200).call(this.zoomBehavior.transform, transform);
   },
 
-  // ── Static map (land polygons) with D3 Data Join
+  // Static map (land polygons) with D3 Data Join
   renderStaticMap() {
     if (!STATE.geoData || !this.g) return;
 
@@ -375,7 +381,7 @@ export const TradeMap = {
       landLayer = this.g.insert('g', ':first-child').attr('class', 'land-layer');
     }
 
-    const graticulePath = landLayer.selectAll('.graticule').data([this._graticuleGeo || d3.geoGraticule()()]);
+    const graticulePath = landLayer.selectAll('.graticule').data([this._graticuleGeo || geoGraticule()()]);
 
     graticulePath.enter().append('path').attr('class', 'graticule').attr('fill', 'none').attr('stroke', '#EBEAE6').attr('stroke-width', 0.5).attr('stroke-opacity', 0.8).merge(graticulePath).attr('d', this.path);
 
@@ -470,7 +476,7 @@ export const TradeMap = {
     }
   },
 
-  // ── Flow rendering (Export Value / 2D only)
+  // Flow rendering (Export Value / 2D only)
   // Normalize a GeoJSON LineString for equirectangular rendering.
   // searoute uses extended longitudes (e.g. -220° for Japan on Pacific routes).
   // This wraps all coords to [-180, 180] and splits at the antimeridian into a MultiLineString.
@@ -542,17 +548,14 @@ export const TradeMap = {
 
   renderFlows() {
     if (!this.svg) return;
-
-    const overlay = document.getElementById('hit-overlay-svg');
-    if (overlay) overlay.style.display = 'none';
-
     this.svg.style('display', 'block');
     if (this.render2DFlows) this.render2DFlows();
   },
 
-  // ── 2D D3 Data Join architecture
+  // 2D D3 Data Join architecture
   render2DFlows() {
     if (!this.g) return;
+    const root = getRoot();
 
     if (STATE.metric !== 'value') {
       this.g.selectAll('.trade-arc, .country-node, .map-label-unified').transition().duration(500).style('opacity', 0).remove();
@@ -570,16 +573,14 @@ export const TradeMap = {
 
     let currentK = 1;
     if (this.svg) {
-      currentK = d3.zoomTransform(this.svg.node()).k;
+      currentK = zoomTransform(this.svg.node()).k;
     }
 
     // Projection cache: each ISO is projected at most once per render call
     const _projCache = {};
     const projOf = iso => {
       if (_projCache[iso]) return _projCache[iso];
-
       _projCache[iso] = this.getProjectedPoint(iso);
-
       return _projCache[iso];
     };
 
@@ -588,42 +589,37 @@ export const TradeMap = {
 
     if (nodeStatsArr.length === 0 || netFlows.length === 0) return;
 
-    const sortedGross = nodeStatsArr.map(d => d.grossVolume).sort(d3.ascending);
-    const sortedNetBal = nodeStatsArr.map(d => Math.abs(d.netBalance)).sort(d3.ascending);
-    const sortedNetFlows = netFlows.map(d => d.netValue).sort(d3.ascending);
+    const sortedGross = nodeStatsArr.map(d => d.grossVolume).sort(ascending);
+    const sortedNetBal = nodeStatsArr.map(d => Math.abs(d.netBalance)).sort(ascending);
+    const sortedNetFlows = netFlows.map(d => d.netValue).sort(ascending);
 
-    const p98Gross = d3.quantile(sortedGross, 0.98) || d3.max(sortedGross) || 1;
-    const p98NetBal = d3.quantile(sortedNetBal, 0.98) || d3.max(sortedNetBal) || 1;
-    const p98NetFlows = d3.quantile(sortedNetFlows, 0.98) || d3.max(sortedNetFlows) || 1;
+    const p98Gross = quantile(sortedGross, 0.98) || d3max(sortedGross) || 1;
+    const p98NetBal = quantile(sortedNetBal, 0.98) || d3max(sortedNetBal) || 1;
+    const p98NetFlows = quantile(sortedNetFlows, 0.98) || d3max(sortedNetFlows) || 1;
 
-    //need to adjust the size
     const maxRadius = Math.max(Math.min(this.width * 0.01, 20), 1);
     const maxEdgeWidth = Math.max(Math.min(this.width * 0.008, 12), 1);
 
-    const radiusScale = d3
-      .scaleSqrt()
+    const radiusScale = scaleSqrt()
       .domain([0, p98Gross])
       .range(isFocused ? [3, maxRadius] : [1.5, maxRadius * 0.7])
       .clamp(true);
 
-    const edgeWidthScale = d3
-      .scaleSqrt()
+    const edgeWidthScale = scaleSqrt()
       .domain([0, p98NetFlows])
       .range(isFocused ? [1.5, maxEdgeWidth] : [0.5, maxEdgeWidth * 0.7])
       .clamp(true);
 
-    const opacityScale = d3
-      .scaleLinear()
+    const opacityScale = scaleLinear()
       .domain([0, p98NetFlows])
       .range(isFocused ? [0.3, 0.95] : [0.15, 0.85])
       .clamp(true);
 
     const maxTransformed = Math.sqrt(p98NetBal);
-    const _colorScaleFn = d3
-      .scaleLinear()
+    const _colorScaleFn = scaleLinear()
       .domain([-maxTransformed, -maxTransformed * 0.15, 0, maxTransformed * 0.15, maxTransformed])
       .range(['#ED1847', '#F9C0C5', '#ffffff', '#C5DFEF', '#009EDB'])
-      .interpolate(d3.interpolateHcl)
+      .interpolate(interpolateHcl)
       .clamp(true);
     const colorScale = val => _colorScaleFn(Math.sign(val) * Math.sqrt(Math.abs(val)));
 
@@ -636,7 +632,7 @@ export const TradeMap = {
     let labelLayer = this.g.select('.label-layer');
     if (labelLayer.empty()) labelLayer = this.g.append('g').attr('class', 'label-layer');
 
-    // --- 1. Arcs (edges) ---
+    // 1. Arcs (edges)
     const visibleFlows = netFlows.filter(d => STATE.countryCoords[d.exporter] && STATE.countryCoords[d.importer]);
 
     const arcs = flowLayer.selectAll('.trade-arc').data(visibleFlows, d => `${d.exporter}|${d.importer}`);
@@ -645,7 +641,7 @@ export const TradeMap = {
 
     const focusedIso = this.focusedIso;
 
-    // パートナーセットを一度だけ構築してO(n×m)→O(n+m)にする
+    // Build partner set once to make per-arc opacity O(1) instead of O(arcs × partners)
     const focusedPartnerSet = new Set();
     if (focusedIso) {
       visibleFlows.forEach(f => {
@@ -671,7 +667,7 @@ export const TradeMap = {
       .attr('stroke', d => CONFIG.flowColors[d.flowCategory])
       .on('click', (event, d) => {
         event.stopPropagation();
-        document.dispatchEvent(new CustomEvent('shc:arc-click', { detail: { exporter: d.exporter, importer: d.importer } }));
+        root.dispatchEvent(new CustomEvent('shc:arc-click', { detail: { exporter: d.exporter, importer: d.importer } }));
       });
 
     const buildArcD = d => {
@@ -696,15 +692,15 @@ export const TradeMap = {
       .attr('id', d => `arc-${d.exporter}-${d.importer}`)
       .attr('data-original-width', d => edgeWidthScale(d.netValue))
       .attr('data-base-opacity', d => opacityScale(d.netValue))
-      .attr('d', buildArcD) // set shape immediately — no interpolation glitch
+      .attr('d', buildArcD)
       .transition()
       .duration(750)
-      .ease(d3.easeCubicOut)
+      .ease(easeCubicOut)
       .attr('stroke', d => CONFIG.flowColors[d.flowCategory])
       .attr('stroke-width', d => edgeWidthScale(d.netValue) / currentK)
       .style('opacity', arcOpacity);
 
-    // --- 2. Nodes (circles) ---
+    // 2. Nodes (circles)
     const activeNodes = Object.keys(nodeStats).filter(d => this.isVisible(d));
 
     const nodes = nodeLayer.selectAll('.country-node').data(activeNodes, d => d);
@@ -717,11 +713,11 @@ export const TradeMap = {
       .attr('class', 'country-node')
       .attr('stroke', '#DED9D5')
       .style('opacity', 0)
-      .on('mouseover', (event, d) => document.dispatchEvent(new CustomEvent('shc:country-hover', { detail: { event, country: d } })))
-      .on('mouseout', () => document.dispatchEvent(new CustomEvent('shc:country-hoverend')))
+      .on('mouseover', (event, d) => root.dispatchEvent(new CustomEvent('shc:country-hover', { detail: { event, country: d } })))
+      .on('mouseout', () => root.dispatchEvent(new CustomEvent('shc:country-hoverend')))
       .on('click', (event, d) => {
         event.stopPropagation();
-        document.dispatchEvent(new CustomEvent('shc:country-click', { detail: d }));
+        root.dispatchEvent(new CustomEvent('shc:country-click', { detail: d }));
       });
 
     const nodeOpacity = d => {
@@ -735,7 +731,7 @@ export const TradeMap = {
       .attr('data-original-radius', d => radiusScale(nodeStats[d].grossVolume))
       .transition()
       .duration(750)
-      .ease(d3.easeElasticOut)
+      .ease(easeElasticOut)
       .attr('cx', d => projOf(d)[0])
       .attr('cy', d => projOf(d)[1])
       .attr('r', d => radiusScale(nodeStats[d].grossVolume) / currentK)
@@ -743,7 +739,7 @@ export const TradeMap = {
       .attr('stroke-width', 1.5 / currentK)
       .style('opacity', nodeOpacity);
 
-    // --- 3. Labels ---
+    // 3. Labels
     const sortedNodes = activeNodes.slice().sort((a, b) => nodeStats[b].grossVolume - nodeStats[a].grossVolume);
     const volumeThreshold = sortedNodes.length > 15 ? nodeStats[sortedNodes[14]].grossVolume : 0;
 
@@ -766,9 +762,10 @@ export const TradeMap = {
       .append('text')
       .attr('class', 'map-label map-label-unified')
       .attr('font-family', 'Inter, sans-serif')
-      .attr('font-weight', '600') // 少し太字にして視認性を高める
+      .attr('font-weight', '600')
       .style('pointer-events', 'none')
-      .style('paint-order', 'stroke fill') // フチを文字の外側にだけ描画するモダンなCSS
+      // Modern paint-order keeps the white halo strictly outside the glyph
+      .style('paint-order', 'stroke fill')
       .style('opacity', 0);
 
     const labelOpacity = d => {
@@ -781,13 +778,13 @@ export const TradeMap = {
       .merge(labels)
       .text(d => STATE.countryNames[d] || d)
       .attr('fill', '#6E6259')
-      .attr('stroke', '#FAFAFA') // 背景や陸地と同じ色で白フチ（Halo）をつける
+      .attr('stroke', '#FAFAFA')
       .attr('stroke-linejoin', 'round')
       .transition()
       .duration(750)
       .attr('x', d => projOf(d)[0] + radiusScale(nodeStats[d].grossVolume) / currentK + 4)
       .attr('y', d => projOf(d)[1] + 4)
-      .attr('font-size', `${8.5 / Math.sqrt(currentK)}px`) // 10pxから8.5pxへ少し縮小
+      .attr('font-size', `${8.5 / Math.sqrt(currentK)}px`)
       .attr('stroke-width', 2.5 / currentK)
       .style('opacity', labelOpacity);
 
@@ -810,7 +807,7 @@ export const TradeMap = {
     return !!STATE.countryCoords[iso];
   },
 
-  // ── Focus mode (insight panel spotlight) ───────────────────────
+  // Focus mode (insight panel spotlight)
   setFocus(iso) {
     if (!this.g) return;
     this.focusedIso = iso;
@@ -841,8 +838,8 @@ export const TradeMap = {
       const p1 = self.projection(s);
       const p2 = self.projection(t);
       if (!p1 || !p2) return this.getAttribute('d');
-      const dx = p2[0] - p1[0],
-        dy = p2[1] - p1[1];
+      const dx = p2[0] - p1[0];
+      const dy = p2[1] - p1[1];
       const dr = Math.sqrt(dx * dx + dy * dy) * 1.3;
       return `M${p1[0]},${p1[1]}A${dr},${dr} 0 0,1 ${p2[0]},${p2[1]}`;
     });
@@ -902,24 +899,24 @@ export const TradeMap = {
 
   toggleSeaRoute() {
     this.searouteMode = !this.searouteMode;
-    document.dispatchEvent(new CustomEvent('shc:searoute-toggled', { detail: { active: this.searouteMode } }));
+    getRoot().dispatchEvent(new CustomEvent('shc:searoute-toggled', { detail: { active: this.searouteMode } }));
     if (!this.focusedIso || !this.g) return;
     const focusedIso = this.focusedIso;
     const self = this;
     this.g.selectAll('.trade-arc').attr('d', function (d) {
-      if (d.exporter !== focusedIso && d.importer !== focusedIso) return d3.select(this).attr('d');
+      if (d.exporter !== focusedIso && d.importer !== focusedIso) return select(this).attr('d');
       if (self.searouteMode) {
         const rp = self._buildRoutePath(d);
         if (rp) return rp;
       }
       const s = STATE.countryCoords[d.exporter];
       const t = STATE.countryCoords[d.importer];
-      if (!s || !t) return d3.select(this).attr('d');
+      if (!s || !t) return select(this).attr('d');
       const p1 = self.projection(s);
       const p2 = self.projection(t);
-      if (!p1 || !p2) return d3.select(this).attr('d');
-      const dx = p2[0] - p1[0],
-        dy = p2[1] - p1[1];
+      if (!p1 || !p2) return select(this).attr('d');
+      const dx = p2[0] - p1[0];
+      const dy = p2[1] - p1[1];
       const dr = Math.sqrt(dx * dx + dy * dy) * 1.3;
       return `M${p1[0]},${p1[1]}A${dr},${dr} 0 0,1 ${p2[0]},${p2[1]}`;
     });
@@ -942,8 +939,8 @@ export const TradeMap = {
       const p1 = self.projection(s);
       const p2 = self.projection(t);
       if (!p1 || !p2) return this.getAttribute('d');
-      const dx = p2[0] - p1[0],
-        dy = p2[1] - p1[1];
+      const dx = p2[0] - p1[0];
+      const dy = p2[1] - p1[1];
       const dr = Math.sqrt(dx * dx + dy * dy) * 1.3;
       return `M${p1[0]},${p1[1]}A${dr},${dr} 0 0,1 ${p2[0]},${p2[1]}`;
     });
@@ -957,7 +954,6 @@ export const TradeMap = {
       });
 
     this.g.selectAll('.country-node').transition().duration(400).style('opacity', 1);
-
     this.g.selectAll('.map-label-unified').transition().duration(400).style('opacity', 1);
 
     this.g
@@ -978,7 +974,7 @@ export const TradeMap = {
     if (!projected) return;
 
     let currentK = 1;
-    if (this.svg) currentK = d3.zoomTransform(this.svg.node()).k;
+    if (this.svg) currentK = zoomTransform(this.svg.node()).k;
 
     let halo = this.g.select('.focus-halo');
     if (halo.empty()) {
@@ -1044,7 +1040,7 @@ export const TradeMap = {
   },
 
   renderLegend() {
-    const container = document.getElementById('legend-content');
+    const container = qs('.legend-content');
     if (!container) return;
 
     const netFlows = STATE.filteredData || [];
@@ -1081,10 +1077,10 @@ export const TradeMap = {
         const valStr = stat.count > 0 ? `$${fmtShort(stat.total)}` : '—';
         const cntStr = stat.count > 0 ? `${stat.count}` : '0';
         return `
-          <div class="legend-flow-item" style="opacity:${active ? 1 : 0.3}">
-              <span class="legend-flow-dot" style="background:${CONFIG.flowColors[c.key]}"></span>
-              <span class="legend-flow-label">${c.label}</span>
-              <span class="legend-flow-stat">${cntStr} · ${valStr}</span>
+          <div class="legend-flow-item${active ? '' : ' is-inactive'}">
+            <span class="legend-flow-dot" style="background:${CONFIG.flowColors[c.key]}"></span>
+            <span class="legend-flow-label">${c.label}</span>
+            <span class="legend-flow-stat">${cntStr} · ${valStr}</span>
           </div>`;
       })
       .join('');
@@ -1104,13 +1100,13 @@ export const TradeMap = {
         <span class="legend-section-label">Nodes</span>
         <div class="legend-nodes">
           <span class="legend-nodes-hint">← Imp</span>
-          <span class="legend-node" style="width:14px;height:14px;background:#ED1847" title="Strong net importer"></span>
-          <span class="legend-node" style="width:10px;height:10px;background:#F9C0C5" title="Net importer"></span>
-          <span class="legend-node" style="width:7px;height:7px;background:#F7DFDF"  title="Slight net importer"></span>
-          <span class="legend-node" style="width:4px;height:4px;background:#DED9D5;border:1px solid #AEA29A" title="Balanced"></span>
-          <span class="legend-node" style="width:7px;height:7px;background:#E3EDF6"  title="Slight net exporter"></span>
-          <span class="legend-node" style="width:10px;height:10px;background:#C5DFEF" title="Net exporter"></span>
-          <span class="legend-node" style="width:14px;height:14px;background:#009EDB" title="Strong net exporter"></span>
+          <span class="legend-node legend-node-importer-strong" title="Strong net importer"></span>
+          <span class="legend-node legend-node-importer-mid" title="Net importer"></span>
+          <span class="legend-node legend-node-importer-weak" title="Slight net importer"></span>
+          <span class="legend-node legend-node-balanced" title="Balanced"></span>
+          <span class="legend-node legend-node-exporter-weak" title="Slight net exporter"></span>
+          <span class="legend-node legend-node-exporter-mid" title="Net exporter"></span>
+          <span class="legend-node legend-node-exporter-strong" title="Strong net exporter"></span>
           <span class="legend-nodes-hint">Exp →</span>
         </div>
       </div>
@@ -1120,17 +1116,16 @@ export const TradeMap = {
         <span class="legend-threshold-badge${isManual ? ' manual' : ''}">${isManual ? 'MANUAL' : 'AUTO'}</span>
         <span class="legend-threshold-val">$${fmtShort(currentThreshold)}</span>
         <span class="legend-arc-count">${arcCount} arcs</span>
-      </div>
-  `;
+      </div>`;
 
     // Update stats
-    const shownTotal = d3.sum(netFlows, d => d.netValue);
+    const shownTotal = d3sum(netFlows, d => d.netValue);
     const bilateralTotal = STATE.totalBilateral || 0;
     const coverage = bilateralTotal > 0 ? (shownTotal / bilateralTotal) * 100 : 0;
 
-    const statEl = document.getElementById('stat-value');
-    const bilatEl = document.getElementById('stat-bilateral');
-    const coverageEl = document.getElementById('stat-coverage');
+    const statEl = qs('.stat-value');
+    const bilatEl = qs('.stat-bilateral');
+    const coverageEl = qs('.stat-coverage');
     if (statEl) statEl.innerText = `$${fmtShort(shownTotal)}`;
     if (bilatEl) bilatEl.innerText = `$${fmtShort(bilateralTotal)}`;
     if (coverageEl) coverageEl.innerText = `${coverage.toFixed(1)}% shown`;

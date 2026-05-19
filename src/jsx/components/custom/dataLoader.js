@@ -1,4 +1,4 @@
-import * as d3 from 'd3';
+import { geoCentroid, json, sum } from 'd3';
 import * as topojson from 'topojson-client';
 import { CONFIG, STATE } from './config.js';
 import { TradeMap } from './map.js';
@@ -11,7 +11,7 @@ export const DataLoader = {
 
   async loadAll() {
     try {
-      const [world, meta, trendSummary, yearFlows] = await Promise.all([d3.json(CONFIG.geoJsonUrl), fetch('./assets/data/meta.json').then(r => r.json()), fetch('./assets/data/trend_summary.json').then(r => r.json()), fetch(`./assets/data/${STATE.year}.json`).then(r => r.json())]);
+      const [world, meta, trendSummary, yearFlows] = await Promise.all([json(CONFIG.geoJsonUrl), fetch('./assets/data/meta.json').then(r => r.json()), fetch('./assets/data/trend_summary.json').then(r => r.json()), fetch(`./assets/data/${STATE.year}.json`).then(r => r.json())]);
 
       // Correct the ~11.314° westward longitude shift in the UNCTAD TopoJSON transform
       if (world.transform) {
@@ -40,7 +40,7 @@ export const DataLoader = {
       STATE.trendSummary = trendSummary;
       STATE.yearCache[STATE.year] = yearFlows;
 
-      // Load routes.json in the background — not needed until a country is clicked
+      // Load routes.json in the background - not needed until a country is clicked
       STATE._routesPromise = fetch('./assets/data/routes.json')
         .then(r => r.json())
         .then(data => {
@@ -68,7 +68,7 @@ export const DataLoader = {
       const numericId = parseInt(feature.properties.code, 10);
       const alpha3 = TradeMap.isoMap[numericId];
       if (alpha3) {
-        STATE.countryCoords[alpha3] = d3.geoCentroid(feature);
+        STATE.countryCoords[alpha3] = geoCentroid(feature);
         STATE.countryNames[alpha3] = feature.properties.labelen;
       }
     });
@@ -85,7 +85,7 @@ export const DataLoader = {
     // 1. Use pre-computed net flows for the current year
     let netFlows = STATE.yearCache[STATE.year] || [];
 
-    // 2. Region filter – both exporter and importer must be in the same region
+    // 2. Region filter - both exporter and importer must be in the same region
     if (STATE.region && STATE.region !== 'Global') {
       netFlows = netFlows.filter(d => {
         return RegionConfig.getRegion(d.exporter) === STATE.region && RegionConfig.getRegion(d.importer) === STATE.region;
@@ -115,7 +115,7 @@ export const DataLoader = {
     const preKey = `${STATE.year}|${STATE.region}|${[...STATE.selectedExporters].sort()}|${[...STATE.selectedImporters].sort()}`;
     if (this._preThresholdKey !== preKey) {
       this._preThresholdKey = preKey;
-      STATE.totalBilateral = d3.sum(netFlows, d => d.netValue);
+      STATE.totalBilateral = sum(netFlows, d => d.netValue);
       STATE.totalBilateralCount = netFlows.length;
       STATE.rawNodeStats = this.computeStatsFromNetFlows(netFlows);
     }
@@ -143,11 +143,11 @@ export const DataLoader = {
     if (n === 0 && !isRegional) {
       floor = 10000000; // global view: $10M
     } else if (n <= 3) {
-      floor = 10000; // 1–3 countries: $10K
+      floor = 10000; // 1-3 countries: $10K
     } else if (n <= 10) {
-      floor = 100000; // 4–10: $100K
+      floor = 100000; // 4-10: $100K
     } else if (n <= 30) {
-      floor = 500000; // 11–30: $500K
+      floor = 500000; // 11-30: $500K
     } else {
       floor = 1000000; // 31+: $1M
     }

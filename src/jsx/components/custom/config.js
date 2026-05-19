@@ -1,4 +1,4 @@
-import * as d3 from 'd3';
+import { format } from 'd3';
 
 export const CONFIG = {
   geoJsonUrl: './assets/data/worldmap-economies-4326.topo.json',
@@ -19,8 +19,8 @@ export const CONFIG = {
     'north-north': '#AEA29A' // UNCTAD Warm Grey
   },
 
-  // Development status: 'north' = Developed economies
-  // All unlisted countries default to 'south' (Developing/LDC)
+  // Development status: 'north' = Developed economies.
+  // All unlisted countries default to 'south' (Developing/LDC).
   development: {
     USA: 'north',
     CAN: 'north',
@@ -85,10 +85,10 @@ export const METRIC_FORMAT = {
     fmt: v => {
       const a = Math.abs(v);
       const s = v < 0 ? '-' : '';
-      if (a >= 1e9) return s + '$' + d3.format('.2f')(a / 1e9) + 'B';
-      if (a >= 1e6) return s + '$' + d3.format('.2f')(a / 1e6) + 'M';
-      if (a >= 1e3) return s + '$' + d3.format('.2f')(a / 1e3) + 'K';
-      return s + '$' + d3.format(',.0f')(a);
+      if (a >= 1e9) return `${s}$${format('.2f')(a / 1e9)}B`;
+      if (a >= 1e6) return `${s}$${format('.2f')(a / 1e6)}M`;
+      if (a >= 1e3) return `${s}$${format('.2f')(a / 1e3)}K`;
+      return `${s}$${format(',.0f')(a)}`;
     }
   }
 };

@@ -1,66 +1,80 @@
 @import url('./variables.css');
 
-/* ── KPI Bar ─────────────────────────────────────────────────── */
+#app-root-2026-second_hand_clothes {
+  /* KPI Bar */
 
-#kpi-bar {
-  padding: 6px 16px;
-  z-index: 20;
-  flex-shrink: 0;
-  background: rgb(255 255 255 / 97%);
-  border-bottom: 1px solid rgb(203 213 224 / 90%);
-  transition: all 0.3s ease;
-
-  .kpi-inner {
-    max-width: var(--content-max-width);
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 16px;
-    margin: 0 auto;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-
-    @media (min-width: 768px) {
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-  }
-
-  .kpi-item {
-    display: flex;
-    align-items: baseline;
-    gap: 4px;
-    white-space: nowrap;
+  .kpi-bar {
+    padding: 6px 16px;
+    z-index: 20;
     flex-shrink: 0;
+    background: var(--unblue-bg);
+    transition: all 0.3s ease;
 
-    &.kpi-item-col {
+    .kpi-inner {
+      max-width: var(--content-max-width);
       display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 0;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 16px;
+      margin: 0 auto;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+
+      @media (min-width: 768px) {
+        justify-content: center;
+        flex-wrap: wrap;
+      }
     }
-  }
 
-  .kpi-label {
-    font-size: var(--fs-xs);
-    font-weight: 600;
-    color: var(--ungrey-text);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
+    .kpi-item {
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
 
-  .kpi-value {
-    font-family: var(--font-mono);
-    font-size: var(--fs-base);
-    font-weight: 700;
-    color: var(--ungrey-dark);
-    transition: color 0.3s ease;
-  }
+      &.kpi-item-col {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
+      }
+    }
 
-  .kpi-divider {
-    width: 1px;
-    height: 16px;
-    flex-shrink: 0;
-    background: var(--ungrey-border);
+    .kpi-label {
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      color: var(--ungrey-text);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .kpi-value {
+      font-family: var(--font-mono);
+      font-size: var(--fs-base);
+      font-weight: 700;
+      color: var(--ungrey-dark);
+      transition: color 0.3s ease;
+
+      &.kpi-value-exp {
+        color: var(--unblue-text);
+      }
+      &.kpi-value-imp {
+        color: #c0392b;
+      }
+      &.kpi-value-ns {
+        color: var(--unblue);
+      }
+      &.kpi-value-ss {
+        color: var(--unyellow);
+      }
+    }
+
+    .kpi-divider {
+      width: 1px;
+      height: 16px;
+      flex-shrink: 0;
+      background: var(--ungrey-border);
+    }
   }
 }

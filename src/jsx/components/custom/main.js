@@ -1,4 +1,4 @@
-import * as d3 from 'd3';
+import { format, sum } from 'd3';
 import { CONFIG, METRIC_FORMAT, STATE } from './config.js';
 import { CountrySelector } from './countrySelector.js';
 import { DataLoader } from './dataLoader.js';
@@ -6,6 +6,32 @@ import { TradeMap } from './map.js';
 import { RegionConfig } from './regions.js';
 
 import './../../../styles/custom/styles.css';
+
+const FLOW_DEFAULTS = ['north-south', 'south-north', 'south-south', 'north-north'];
+const CAT_LABELS_FULL = {
+  'north-south': 'North → South',
+  'south-north': 'South → North',
+  'south-south': 'South → South',
+  'north-north': 'North → North'
+};
+const CAT_LABELS_ARROW = {
+  'north-south': 'North→South',
+  'south-north': 'South→North',
+  'south-south': 'South→South',
+  'north-north': 'North→North'
+};
+const CAT_LABELS_SHORT = {
+  'north-south': 'N→S',
+  'south-north': 'S→N',
+  'south-south': 'S→S',
+  'north-north': 'N→N'
+};
+
+// Helper: app root element. Use as `const root = getRoot()`.
+const getRoot = () => window.appRef.current;
+// Helper: scoped querySelector
+const qs = sel => window.appRef.current.querySelector(sel);
+const qsa = sel => window.appRef.current.querySelectorAll(sel);
 
 const App = {
   exporterSelector: null,
@@ -17,11 +43,9 @@ const App = {
 
   async init() {
     STATE.selectedImporters = new Set();
-    if (!STATE.flowFilters) STATE.flowFilters = new Set(['north-south', 'south-north', 'south-south', 'north-north']);
+    if (!STATE.flowFilters) STATE.flowFilters = new Set(FLOW_DEFAULTS);
 
-    const nodes = window.appRef.current.querySelectorAll('.flow-checkbox');
-
-    for (const el of nodes) {
+    for (const el of qsa('.flow-checkbox')) {
       el.checked = true;
     }
     STATE.region = 'Global';
@@ -29,17 +53,15 @@ const App = {
     const success = await DataLoader.loadAll();
     if (!success) return;
 
-    console.log('Initializing country selectors...');
     this.exporterSelector = new CountrySelector('exp', 'exp-label', 'exporter');
     this.importerSelector = new CountrySelector('imp', 'imp-label', 'importer');
 
     try {
       await this.exporterSelector.init();
       await this.importerSelector.init();
-      console.log('Country selectors initialized successfully');
     } catch (error) {
       console.error('Failed to initialize country selectors:', error);
-      alert('国選択機能の初期化に失敗しました。詳細はコンソールを確認してください。');
+      alert('Failed to initialize country selectors. Check the console for details.');
       return;
     }
 
@@ -48,7 +70,7 @@ const App = {
 
     this.exporterSelector.updateSelection();
     this.updateDashboard();
-    window.appRef.current.querySelector('#loader').classList.add('hidden');
+    qs('.loader').classList.add('hidden');
   },
 
   changeFlowDirection(e) {
@@ -63,28 +85,27 @@ const App = {
       this.updateDashboard(false);
     }, 50);
   },
+
   setupEventListeners() {
-    // Region Buttons
-    window.appRef.current.querySelectorAll('.region-btn').forEach(btn => {
+    const root = getRoot();
+
+    // Region buttons
+    qsa('.region-btn').forEach(btn => {
       btn.addEventListener('click', e => {
-        const region = e.target.dataset.region;
-        STATE.region = region;
-
+        STATE.region = e.target.dataset.region;
         this.updateUIClasses('.region-btn', e.target);
-
         this.exporterSelector.setCountries([]);
         this.importerSelector.setCountries([]);
-
         this.updateDashboard();
       });
     });
 
-    // Year
-    const yearSelect = window.appRef.current.querySelector('#year-select');
+    // Year select
+    const yearSelect = qs('.year-select');
     if (yearSelect) {
       yearSelect.addEventListener('change', async e => {
         const year = +e.target.value;
-        const loader = window.appRef.current.querySelector('#loader');
+        const loader = qs('.loader');
         loader.classList.remove('hidden');
         try {
           await DataLoader.loadYear(year);
@@ -101,7 +122,7 @@ const App = {
     }
 
     // Threshold toggle
-    window.appRef.current.querySelectorAll('.threshold-btn').forEach(btn => {
+    qsa('.threshold-btn').forEach(btn => {
       btn.addEventListener('click', e => {
         const val = e.target.dataset.threshold;
         STATE.thresholdMode = val === 'auto' ? 'auto' : +val;
@@ -112,70 +133,51 @@ const App = {
       });
     });
 
-    // Changed logic.
-    // // Flow category checkboxes
-    // window.appRef.current.querySelectorAll('.flow-checkbox').forEach(cb => {
-    //   cb.addEventListener('change', (e) => {
-    //     const val = e.target.value;
-    //     if (e.target.checked) STATE.flowFilters.add(val);
-    //     else STATE.flowFilters.delete(val);
-    //     clearTimeout(this._filterDebounce);
-    //     this._filterDebounce = setTimeout(() => this.updateDashboard(false), 50);
-    //   });
-    // });
-
-    // Dropdown Logic (Exporter & Importer)
+    // Country picker dropdowns
     this.setupHierarchicalDropdown('exp', this.exporterSelector);
     this.setupHierarchicalDropdown('imp', this.importerSelector);
 
     // Insight panel close button
-    const panelCloseBtn = window.appRef.current.querySelector('#panel-close-btn');
-    if (panelCloseBtn) panelCloseBtn.addEventListener('click', () => this.closeInsightPanel());
+    qs('.panel-close-btn')?.addEventListener('click', () => this.closeInsightPanel());
 
     // Sea Route toggle button
-    const searouteBtn = window.appRef.current.querySelector('#searoute-btn');
-    if (searouteBtn)
-      searouteBtn.addEventListener('click', () => {
-        if (TradeMap?.toggleSeaRoute) TradeMap.toggleSeaRoute();
-      });
-    window.appRef.current.addEventListener('shc:searoute-toggled', e => {
-      const btn = window.appRef.current.querySelector('#searoute-btn');
-      if (btn) btn.classList.toggle('active', e.detail.active);
+    qs('.searoute-btn')?.addEventListener('click', () => {
+      TradeMap?.toggleSeaRoute?.();
+    });
+    root.addEventListener('shc:searoute-toggled', e => {
+      qs('.searoute-btn')?.classList.toggle('active', e.detail.active);
     });
 
     // Mobile legend toggle
-    const mobileLegendBtn = window.appRef.current.querySelector('#mobile-legend-btn');
-    if (mobileLegendBtn) mobileLegendBtn.addEventListener('click', () => this.toggleMobileLegend());
-    const mobileBackdrop = window.appRef.current.querySelector('#mobile-legend-backdrop');
-    if (mobileBackdrop) mobileBackdrop.addEventListener('click', () => this.toggleMobileLegend());
-    const mobileLegendClose = window.appRef.current.querySelector('#mobile-legend-close');
-    if (mobileLegendClose) mobileLegendClose.addEventListener('click', () => this.toggleMobileLegend());
+    qs('.mobile-legend-btn')?.addEventListener('click', () => this.toggleMobileLegend());
+    qs('.mobile-legend-backdrop')?.addEventListener('click', () => this.toggleMobileLegend());
+    qs('.mobile-legend-close')?.addEventListener('click', () => this.toggleMobileLegend());
 
     // Arc detail modal
-    window.appRef.current.querySelector('#arc-modal-close').addEventListener('click', () => this.closeArcModal());
-    window.appRef.current.querySelector('#arc-modal-backdrop').addEventListener('click', () => this.closeArcModal());
+    qs('.arc-modal-close')?.addEventListener('click', () => this.closeArcModal());
+    qs('.arc-modal-backdrop')?.addEventListener('click', () => this.closeArcModal());
 
     // Compare modal
-    window.appRef.current.querySelector('#compare-modal-close').addEventListener('click', () => this.closeCompareModal());
-    window.appRef.current.querySelector('#compare-modal-backdrop').addEventListener('click', () => this.closeCompareModal());
+    qs('.compare-modal-close')?.addEventListener('click', () => this.closeCompareModal());
+    qs('.compare-modal-backdrop')?.addEventListener('click', () => this.closeCompareModal());
 
     // Methodology modal
-    window.appRef.current.querySelector('#methodology-btn')?.addEventListener('click', () => this.openMethodologyModal());
-    window.appRef.current.querySelector('#methodology-modal-close')?.addEventListener('click', () => this.closeMethodologyModal());
-    window.appRef.current.querySelector('#methodology-modal-backdrop')?.addEventListener('click', () => this.closeMethodologyModal());
+    qs('.methodology-btn')?.addEventListener('click', () => this.openMethodologyModal());
+    qs('.methodology-modal-close')?.addEventListener('click', () => this.closeMethodologyModal());
+    qs('.methodology-modal-backdrop')?.addEventListener('click', () => this.closeMethodologyModal());
 
     // Escape key closes any open modal
-    window.appRef.current.addEventListener('keydown', e => {
+    root.addEventListener('keydown', e => {
       if (e.key !== 'Escape') return;
-      if (!window.appRef.current.querySelector('#arc-modal').classList.contains('hidden')) this.closeArcModal();
-      if (!window.appRef.current.querySelector('#compare-modal').classList.contains('hidden')) this.closeCompareModal();
-      if (!window.appRef.current.querySelector('#methodology-modal').classList.contains('hidden')) this.closeMethodologyModal();
+      if (!qs('.arc-modal').classList.contains('hidden')) this.closeArcModal();
+      if (!qs('.compare-modal').classList.contains('hidden')) this.closeCompareModal();
+      if (!qs('.methodology-modal').classList.contains('hidden')) this.closeMethodologyModal();
     });
 
-    // モバイルブラウザのUIバーによる高さのズレを修正するためのCSS変数をセット
+    // CSS variable to compensate for the URL-bar viewport shift on mobile browsers
     const setMobileHeight = () => {
       const vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty('--vh', `${vh}px`);
+      root.style.setProperty('--vh', `${vh}px`);
     };
     setMobileHeight();
 
@@ -188,34 +190,34 @@ const App = {
       }, 200);
     });
 
-    // ── Mobile Filter Panel ───────────────────────────────
-    window.appRef.current.querySelector('#mobile-filter-btn')?.addEventListener('click', () => this.toggleMobileFilter());
-    window.appRef.current.querySelector('#mobile-filter-close')?.addEventListener('click', () => this.toggleMobileFilter());
-    window.appRef.current.querySelector('#mobile-filter-backdrop')?.addEventListener('click', () => this.toggleMobileFilter());
+    // Mobile filter panel
+    qs('.mobile-filter-btn')?.addEventListener('click', () => this.toggleMobileFilter());
+    qs('.mobile-filter-close')?.addEventListener('click', () => this.toggleMobileFilter());
+    qs('.mobile-filter-backdrop')?.addEventListener('click', () => this.toggleMobileFilter());
 
-    // Mobile fit to screen button
-    window.appRef.current.querySelector('#fit-screen-btn')?.addEventListener('click', () => {
+    // Mobile fit-to-screen button
+    qs('.fit-screen-btn')?.addEventListener('click', () => {
       TradeMap.zoomToRegion('Global');
     });
 
     // Mobile country backdrop closes any open country menu
-    window.appRef.current.querySelector('#mobile-country-backdrop')?.addEventListener('click', () => {
+    qs('.mobile-country-backdrop')?.addEventListener('click', () => {
       ['exp', 'imp'].forEach(p => {
-        const menu = window.appRef.current.querySelector(`#${p}-menu`);
-        const btn = window.appRef.current.querySelector(`#${p}-btn`);
+        const menu = qs(`.${p}-menu`);
+        const btn = qs(`.${p}-btn`);
         menu.classList.add('hidden');
         menu.classList.remove('mobile-menu-fixed');
         if (menu.parentElement !== btn.parentElement) {
           btn.parentElement.appendChild(menu);
         }
-        btn.parentElement.style.zIndex = '50'; // リセット
+        btn.parentElement.style.zIndex = '50';
       });
-      window.appRef.current.querySelector('#mobile-country-backdrop').classList.add('hidden');
+      qs('.mobile-country-backdrop').classList.add('hidden');
     });
 
     // Mobile year select syncs to desktop handler
-    window.appRef.current.querySelector('#m-year-select')?.addEventListener('change', async e => {
-      const desktopSelect = window.appRef.current.querySelector('#year-select');
+    qs('.m-year-select')?.addEventListener('change', e => {
+      const desktopSelect = qs('.year-select');
       desktopSelect.value = e.target.value;
       desktopSelect.dispatchEvent(new Event('change'));
     });
@@ -225,38 +227,39 @@ const App = {
   },
 
   setupHierarchicalDropdown(prefix, selector) {
-    const btn = window.appRef.current.querySelector(`#${prefix}-btn`);
-    const mBtn = window.appRef.current.querySelector(`#m-${prefix}-btn`);
-    const menu = window.appRef.current.querySelector(`#${prefix}-menu`);
-    const search = window.appRef.current.querySelector(`#${prefix}-search`);
-    const clearAll = window.appRef.current.querySelector(`#${prefix}-clear-all`);
+    const root = getRoot();
+    const btn = qs(`.${prefix}-btn`);
+    const mBtn = qs(`.m-${prefix}-btn`);
+    const menu = qs(`.${prefix}-menu`);
+    const search = qs(`.${prefix}-search`);
+    const clearAll = qs(`.${prefix}-clear-all`);
 
     const originalParent = btn.parentElement;
 
     const closeOtherMenu = () => {
       const otherPrefix = prefix === 'exp' ? 'imp' : 'exp';
-      const otherMenu = window.appRef.current.querySelector(`#${otherPrefix}-menu`);
-      const otherBtn = window.appRef.current.querySelector(`#${otherPrefix}-btn`);
+      const otherMenu = qs(`.${otherPrefix}-menu`);
+      const otherBtn = qs(`.${otherPrefix}-btn`);
       otherMenu.classList.add('hidden');
       otherMenu.classList.remove('mobile-menu-fixed');
       if (otherMenu.parentElement !== otherBtn.parentElement) {
         otherBtn.parentElement.appendChild(otherMenu);
       }
-      otherBtn.parentElement.style.zIndex = '50'; // 閉じた方はリセット
+      otherBtn.parentElement.style.zIndex = '50';
     };
 
     btn.addEventListener('click', e => {
       e.stopPropagation();
       closeOtherMenu();
 
-      // PC版（横長）で開くときは、必ずモバイル用の固定設定を外す
+      // Desktop layout: ensure menu is not in mobile fixed-position mode
       menu.classList.remove('mobile-menu-fixed');
       if (menu.parentElement !== originalParent) {
         originalParent.appendChild(menu);
       }
       menu.classList.toggle('hidden');
 
-      // 開いたメニューが他のボタン（下の要素）に隠れないように z-index を高くする
+      // Raise z-index of the open picker so it stacks over neighbouring controls
       originalParent.style.zIndex = menu.classList.contains('hidden') ? '50' : '60';
     });
 
@@ -265,16 +268,17 @@ const App = {
         e.stopPropagation();
         closeOtherMenu();
 
-        // モバイル表示用に body 直下に移動 (親要素の hidden の影響を避ける)
-        document.body.appendChild(menu);
+        // Reparent the menu under the app root so its fixed positioning is not
+        // clipped by any parent overflow/transform
+        root.appendChild(menu);
 
         menu.classList.remove('hidden');
         menu.classList.add('mobile-menu-fixed');
-        window.appRef.current.querySelector('#mobile-country-backdrop')?.classList.remove('hidden');
+        qs('.mobile-country-backdrop')?.classList.remove('hidden');
       });
     }
 
-    window.appRef.current.addEventListener('click', e => {
+    root.addEventListener('click', e => {
       const isOutside = !menu.contains(e.target) && !btn.contains(e.target) && !mBtn?.contains(e.target);
       if (isOutside) {
         menu.classList.add('hidden');
@@ -282,14 +286,14 @@ const App = {
         if (menu.parentElement !== originalParent) {
           originalParent.appendChild(menu);
         }
-        originalParent.style.zIndex = '50'; // 画面外クリックで閉じた時にリセット
+        originalParent.style.zIndex = '50';
       }
     });
 
     search.addEventListener('input', e => {
       const term = e.target.value.toLowerCase().trim();
       if (!term) {
-        // Restore default: show group rows, collapse all children
+        // Reset to default: section/group rows visible, all children collapsed
         for (let els = menu.querySelectorAll('.picker-section-header, .group-option, .country-option'), i = 0; i < els.length; i++) els[i].style.display = '';
         menu.querySelectorAll('.group-children').forEach(c => {
           c.classList.add('hidden');
@@ -299,7 +303,7 @@ const App = {
           t.setAttribute('aria-expanded', 'false');
         });
       } else {
-        // Search mode: hide group rows/headers, expand all children, filter countries
+        // Search mode: hide section/group rows, expand all children, filter countries
         for (let els = menu.querySelectorAll('.picker-section-header, .group-option'), i = 0; i < els.length; i++) els[i].style.display = 'none';
         menu.querySelectorAll('.group-children').forEach(c => {
           c.classList.remove('hidden');
@@ -318,7 +322,7 @@ const App = {
   },
 
   updateUIClasses(selector, activeEl) {
-    for (let els = window.appRef.current.querySelectorAll(selector), i = 0; i < els.length; i++) els[i].classList.remove('active');
+    for (let els = qsa(selector), i = 0; i < els.length; i++) els[i].classList.remove('active');
     activeEl.classList.add('active');
   },
 
@@ -328,22 +332,22 @@ const App = {
     const rawStats = STATE.rawNodeStats || stats;
     const mf = METRIC_FORMAT[STATE.metric] || METRIC_FORMAT.value;
 
-    const total = d3.sum(flows, d => d.netValue);
-    const totalEl = window.appRef.current.querySelector('#kpi-total');
+    const total = sum(flows, d => d.netValue);
+    const totalEl = qs('.kpi-total');
     if (totalEl) totalEl.textContent = mf.fmt(total);
 
-    const flowsEl = window.appRef.current.querySelector('#kpi-flows');
-    if (flowsEl) flowsEl.textContent = d3.format(',')(flows.length);
+    const flowsEl = qs('.kpi-flows');
+    if (flowsEl) flowsEl.textContent = format(',')(flows.length);
 
-    const countriesEl = window.appRef.current.querySelector('#kpi-countries');
+    const countriesEl = qs('.kpi-countries');
     if (countriesEl) countriesEl.textContent = Object.keys(stats).length;
 
-    const topExpEl = window.appRef.current.querySelector('#kpi-top-exp');
-    const topImpEl = window.appRef.current.querySelector('#kpi-top-imp');
+    const topExpEl = qs('.kpi-top-exp');
+    const topImpEl = qs('.kpi-top-imp');
     if (topExpEl || topImpEl) {
       // Single O(n) pass instead of O(n log n) sort — we only need the extremes.
-      let topExp = null,
-        topImp = null;
+      let topExp = null;
+      let topImp = null;
       for (const [iso, st] of Object.entries(rawStats)) {
         if (!topExp || st.netBalance > topExp[1].netBalance) topExp = [iso, st];
         if (!topImp || st.netBalance < topImp[1].netBalance) topImp = [iso, st];
@@ -366,19 +370,18 @@ const App = {
       }
     }
 
-    const scopeEl = window.appRef.current.querySelector('#kpi-scope');
+    const scopeEl = qs('.kpi-scope');
     if (scopeEl) scopeEl.textContent = this._buildScopeText();
 
-    let nsTotal = 0,
-      ssTotal = 0;
+    let nsTotal = 0;
+    let ssTotal = 0;
     flows.forEach(d => {
       if (d.flowCategory === 'north-south') nsTotal += d.netValue;
       else if (d.flowCategory === 'south-south') ssTotal += d.netValue;
     });
-    const nsPctEl = window.appRef.current.querySelector('#kpi-ns-pct');
+    const nsPctEl = qs('.kpi-ns-pct');
     if (nsPctEl) nsPctEl.textContent = total > 0 ? `${Math.round((nsTotal / total) * 100)}%` : '—';
-
-    const ssPctEl = window.appRef.current.querySelector('#kpi-ss-pct');
+    const ssPctEl = qs('.kpi-ss-pct');
     if (ssPctEl) ssPctEl.textContent = total > 0 ? `${Math.round((ssTotal / total) * 100)}%` : '—';
   },
 
@@ -401,7 +404,7 @@ const App = {
   // ── P1: Insight Side Panel ──────────────────────────────────────
 
   openInsightPanel(iso) {
-    if (window.appRef.current.querySelector('#mobile-filter-panel')?.classList.contains('open')) {
+    if (qs('.mobile-filter-panel')?.classList.contains('open')) {
       this.toggleMobileFilter();
     }
     const name = STATE.countryNames[iso] || iso;
@@ -410,14 +413,16 @@ const App = {
     const region = RegionConfig.getRegion(iso) || 'Unknown';
     const devStatus = CONFIG.development[iso] === 'north' ? 'Developed' : 'Developing';
 
-    window.appRef.current.querySelector('#panel-country-name').textContent = name;
-    window.appRef.current.querySelector('#panel-country-meta').textContent = `${region} · ${devStatus} · ${STATE.year}`;
-    window.appRef.current.querySelector('#panel-body').innerHTML = this._buildPanelContent(iso, stats, mf);
+    qs('.panel-country-name').textContent = name;
+    qs('.panel-country-meta').textContent = `${region} · ${devStatus} · ${STATE.year}`;
+    const panelBody = qs('.panel-body');
+    panelBody.innerHTML = this._buildPanelContent(iso, stats, mf);
+    this._wirePanelButtons(panelBody, iso);
 
-    window.appRef.current.querySelector('#insight-panel').classList.add('open');
-    document.body.classList.add('insight-open');
+    qs('.insight-panel').classList.add('open');
+    getRoot().classList.add('insight-open');
 
-    // モバイルでヘッダーが消えて地図が広がるため、D3マップのサイズ再計算をトリガー
+    // Mobile layout: header hides and the map area grows, so trigger a D3 resize
     if (window.innerWidth <= 767) {
       setTimeout(() => window.dispatchEvent(new Event('resize')), 10);
     }
@@ -426,7 +431,7 @@ const App = {
     this.hideTooltip();
 
     // Reset Sea Route button to OFF for each new country
-    const searouteBtn = document.getElementById('searoute-btn');
+    const searouteBtn = qs('.searoute-btn');
     if (searouteBtn) {
       searouteBtn.disabled = false;
       searouteBtn.classList.remove('active');
@@ -435,21 +440,40 @@ const App = {
     if (TradeMap?.setFocus) {
       // Ensure routes.json is loaded before switching to sea-route rendering
       const doFocus = () => TradeMap.setFocus(iso);
-      STATE._routesPromise ? STATE._routesPromise.then(doFocus) : doFocus();
+      if (STATE._routesPromise) STATE._routesPromise.then(doFocus);
+      else doFocus();
     }
   },
 
-  closeInsightPanel() {
-    window.appRef.current.querySelector('#insight-panel').classList.remove('open');
-    document.body.classList.remove('insight-open');
+  // Delegate clicks on the partner-list action buttons (one listener instead of
+  // inline onclick handlers that need a global window.App reference)
+  _wirePanelButtons(panelBody, iso) {
+    panelBody.addEventListener('click', e => {
+      const btn = e.target.closest('.si-btn');
+      if (!btn) return;
+      const { action, partner } = btn.dataset;
+      if (!partner) return;
+      if (action === 'arc') {
+        const arcExp = btn.dataset.arcExp || iso;
+        const arcImp = btn.dataset.arcImp || partner;
+        this.openArcModal(arcExp, arcImp);
+      } else if (action === 'cmp') {
+        this.openCompareModal(iso, partner);
+      }
+    });
+  },
 
-    const searouteBtn = window.appRef.current.querySelector('#searoute-btn');
+  closeInsightPanel() {
+    qs('.insight-panel').classList.remove('open');
+    getRoot().classList.remove('insight-open');
+
+    const searouteBtn = qs('.searoute-btn');
     if (searouteBtn) {
       searouteBtn.disabled = true;
       searouteBtn.classList.remove('active');
     }
 
-    // モバイルでヘッダーが再表示されて地図が縮むため、D3マップのサイズ再計算をトリガー
+    // Mobile layout: header reappears and the map area shrinks, so trigger a D3 resize
     if (window.innerWidth <= 767) {
       setTimeout(() => window.dispatchEvent(new Event('resize')), 10);
     }
@@ -468,17 +492,16 @@ const App = {
     const impName = STATE.countryNames[impIso] || impIso;
     const mf = METRIC_FORMAT[STATE.metric] || METRIC_FORMAT.value;
 
-    window.appRef.current.querySelector('#arc-modal-title').textContent = `${expName}  →  ${impName}`;
-    window.appRef.current.querySelector('#arc-modal-meta').textContent = `Net exporter: ${expName} · ${STATE.year}`;
-    window.appRef.current.querySelector('#arc-modal-body').innerHTML = this._buildArcDetailContent(expIso, impIso, mf);
+    qs('.arc-modal-title').textContent = `${expName}  →  ${impName}`;
+    qs('.arc-modal-meta').textContent = `Net exporter: ${expName} · ${STATE.year}`;
+    qs('.arc-modal-body').innerHTML = this._buildArcDetailContent(expIso, impIso, mf);
 
-    const modal = window.appRef.current.querySelector('#arc-modal');
-    modal.classList.remove('hidden');
+    qs('.arc-modal').classList.remove('hidden');
     this.hideTooltip();
   },
 
   closeArcModal() {
-    window.appRef.current.querySelector('#arc-modal').classList.add('hidden');
+    qs('.arc-modal').classList.add('hidden');
   },
 
   _buildArcDetailContent(expIso, impIso, mf) {
@@ -517,8 +540,7 @@ const App = {
     const netSign = curNet >= 0 ? '+' : '';
     const fc = STATE.filteredData.find(d => (d.exporter === expIso && d.importer === impIso) || (d.exporter === impIso && d.importer === expIso));
     const flowCat = fc ? fc.flowCategory : null;
-    const catLabels = { 'north-south': 'North→South', 'south-north': 'South→North', 'south-south': 'South→South', 'north-north': 'North→North' };
-    const catBadge = flowCat ? `<span class="si-badge" style="color:${CONFIG.flowColors[flowCat]};border-color:${CONFIG.flowColors[flowCat]}55">${catLabels[flowCat]}</span>` : '';
+    const catBadge = flowCat ? `<span class="si-badge" style="color:${CONFIG.flowColors[flowCat]};border-color:${CONFIG.flowColors[flowCat]}55">${CAT_LABELS_ARROW[flowCat]}</span>` : '';
 
     let html = `
       <div class="si-kpi-grid cols-3">
@@ -535,12 +557,12 @@ const App = {
           <div class="si-kpi-value">${mf.fmt(curBtoA)}</div>
         </div>
       </div>
-    ${catBadge ? `<div style="text-align:center;margin-bottom:12px">${catBadge}</div>` : ''}`;
+    ${catBadge ? `<div class="si-badge-wrap">${catBadge}</div>` : ''}`;
 
-    const W = 440,
-      H = 36,
-      barH = 14,
-      gap = 3;
+    const W = 440;
+    const H = 36;
+    const barH = 14;
+    const gap = 3;
     const bw = (W - gap * (years.length - 1)) / years.length;
     const bars = years
       .map((y, i) => {
@@ -613,24 +635,23 @@ const App = {
     const nameB = STATE.countryNames[isoB] || isoB;
     const mf = METRIC_FORMAT[STATE.metric] || METRIC_FORMAT.value;
 
-    window.appRef.current.querySelector('#compare-modal-title').textContent = `${nameA}  vs  ${nameB}`;
-    window.appRef.current.querySelector('#compare-modal-body').innerHTML = this._buildCompareContent(isoA, isoB, mf);
-
-    window.appRef.current.querySelector('#compare-modal').classList.remove('hidden');
+    qs('.compare-modal-title').textContent = `${nameA}  vs  ${nameB}`;
+    qs('.compare-modal-body').innerHTML = this._buildCompareContent(isoA, isoB, mf);
+    qs('.compare-modal').classList.remove('hidden');
     this.hideTooltip();
   },
 
   closeCompareModal() {
-    window.appRef.current.querySelector('#compare-modal').classList.add('hidden');
+    qs('.compare-modal').classList.add('hidden');
     this._compareIso = null;
   },
 
   openMethodologyModal() {
-    window.appRef.current.querySelector('#methodology-modal').classList.remove('hidden');
+    qs('.methodology-modal').classList.remove('hidden');
   },
 
   closeMethodologyModal() {
-    window.appRef.current.querySelector('#methodology-modal').classList.add('hidden');
+    qs('.methodology-modal').classList.add('hidden');
   },
 
   _buildCompareContent(isoA, isoB, mf) {
@@ -656,11 +677,11 @@ const App = {
     const maxV = Math.max(...years.map(y => Math.max(totA[y], totB[y])), 1);
 
     const metricRows = [
-      { label: 'Region', vA: regA, vB: regB, raw: false },
-      { label: 'Status', vA: devA, vB: devB, raw: false },
-      { label: 'Gross Volume', vA: statsA ? mf.fmt(statsA.grossVolume) : '—', vB: statsB ? mf.fmt(statsB.grossVolume) : '—', raw: false, winA: statsA && statsB ? statsA.grossVolume > statsB.grossVolume : null },
-      { label: 'Net Balance', vA: statsA ? mf.fmt(Math.abs(statsA.netBalance)) : '—', vB: statsB ? mf.fmt(Math.abs(statsB.netBalance)) : '—', raw: false },
-      { label: 'Role', vA: statsA ? (statsA.netBalance >= 0 ? 'Net Exporter' : 'Net Importer') : '—', vB: statsB ? (statsB.netBalance >= 0 ? 'Net Exporter' : 'Net Importer') : '—', raw: false }
+      { label: 'Region', vA: regA, vB: regB },
+      { label: 'Status', vA: devA, vB: devB },
+      { label: 'Gross Volume', vA: statsA ? mf.fmt(statsA.grossVolume) : '—', vB: statsB ? mf.fmt(statsB.grossVolume) : '—', winA: statsA && statsB ? statsA.grossVolume > statsB.grossVolume : null },
+      { label: 'Net Balance', vA: statsA ? mf.fmt(Math.abs(statsA.netBalance)) : '—', vB: statsB ? mf.fmt(Math.abs(statsB.netBalance)) : '—' },
+      { label: 'Role', vA: statsA ? (statsA.netBalance >= 0 ? 'Net Exporter' : 'Net Importer') : '—', vB: statsB ? (statsB.netBalance >= 0 ? 'Net Exporter' : 'Net Importer') : '—' }
     ];
 
     const headerRows = metricRows
@@ -670,29 +691,29 @@ const App = {
         return `
           <tr>
             <td class="ar" style="${hlA}">${r.vA}</td>
-            <td class="ac muted bold" style="font-size:9px;text-transform:uppercase;letter-spacing:0.04em">${r.label}</td>
+            <td class="ac muted bold compare-label">${r.label}</td>
             <td style="${hlB}">${r.vB}</td>
           </tr>`;
       })
       .join('');
 
     let html = `
-      <div class="si-kpi-grid cols-3" style="margin-bottom:12px">
-        <div class="si-kpi-card exp" style="border-radius:8px 0 0 8px;border-right:none">
-          <div class="si-kpi-value" style="font-size:11px">${nameA}</div>
+      <div class="si-kpi-grid cols-3 has-margin">
+        <div class="si-kpi-card exp si-kpi-card-compare-a">
+          <div class="si-kpi-value si-kpi-value-small">${nameA}</div>
         </div>
-        <div class="si-kpi-card net" style="border-radius:0;display:flex;align-items:center;justify-content:center">
-          <span style="color:#AEA29A;font-weight:700;font-size:14px">vs</span>
+        <div class="si-kpi-card net si-kpi-card-compare-mid">
+          <span class="si-kpi-card-compare-vs">vs</span>
         </div>
-        <div class="si-kpi-card" style="border-radius:0 8px 8px 0;border-left:none;background:rgba(251,175,23,0.1);border:1px solid rgba(251,175,23,0.3)">
-          <div class="si-kpi-value" style="font-size:11px;color:#b45309">${nameB}</div>
+        <div class="si-kpi-card si-kpi-card-compare-b">
+          <div class="si-kpi-value si-kpi-value-small" style="color:#b45309">${nameB}</div>
         </div>
       </div>
-      <table class="si-table" style="margin-bottom:14px">${headerRows}</table>`;
+      <table class="si-table has-margin">${headerRows}</table>`;
 
-    const W = 580,
-      H = 60,
-      gap = 4;
+    const W = 580;
+    const H = 60;
+    const gap = 4;
     const bw = (W - gap * (years.length - 1)) / years.length;
     const points = arr =>
       years
@@ -708,7 +729,7 @@ const App = {
         const x = i * (bw + gap) + bw / 2;
         const yp = H - (totA[y] / maxV) * H;
         const isCur = y === STATE.year;
-        return `<circle cx="${x}" cy="${yp}" r="${isCur ? 4 : 2}" fill="${isCur ? '#009EDB' : '#009EDB'}" opacity="${isCur ? 1 : 0.7}"/>`;
+        return `<circle cx="${x}" cy="${yp}" r="${isCur ? 4 : 2}" fill="#009EDB" opacity="${isCur ? 1 : 0.7}"/>`;
       })
       .join('');
     const dotsB = years
@@ -776,8 +797,8 @@ const App = {
   },
 
   _buildPanelContent(iso, stats, mf) {
-    const partnerExports = {},
-      partnerImports = {};
+    const partnerExports = {};
+    const partnerImports = {};
     STATE.filteredData.forEach(d => {
       if (d.exporter === iso) partnerExports[d.importer] = (partnerExports[d.importer] || 0) + d.netValue;
       else if (d.importer === iso) partnerImports[d.exporter] = (partnerImports[d.exporter] || 0) + d.netValue;
@@ -871,7 +892,7 @@ const App = {
           const rankTip = theirRank > 0 ? `${pName} ranks ${isoName} as their #${theirRank} trading partner (pre-threshold)` : '';
           const rankDisplay = theirRank > 0 ? `<span title="${rankTip}" style="font-size:9px;font-family:monospace;color:#AEA29A">${idx + 1}·<span style="color:${rankCol};font-weight:700">#${theirRank}</span></span>` : `<span style="font-size:9px;font-family:monospace;color:#AEA29A">${idx + 1}</span>`;
 
-          // Bilateral flow split: share flowing in the dominant direction. (pre-threshold gross flows)
+          // Bilateral flow split: share flowing in the dominant direction (pre-threshold gross flows)
           let splitBadge = '';
           if (STATE.bilateralHistory) {
             const [a, b] = [iso, pIso].sort();
@@ -901,8 +922,8 @@ const App = {
               <span class="si-split">${splitBadge}</span>
               <span class="si-val">${mf.fmt(val)}</span>
               <div class="si-actions">
-                <button onclick="App.openArcModal('${arcExpIso}','${arcImpIso}')" class="si-btn" title="Bilateral history">↗</button>
-                <button onclick="App.openCompareModal('${iso}','${pIso}')" class="si-btn cmp" title="Compare">⇄</button>
+                <button type="button" class="si-btn" data-action="arc" data-partner="${pIso}" data-arc-exp="${arcExpIso}" data-arc-imp="${arcImpIso}" title="Bilateral history">↗</button>
+                <button type="button" class="si-btn cmp" data-action="cmp" data-partner="${pIso}" title="Compare">⇄</button>
               </div>
             </div>`;
         })
@@ -910,7 +931,7 @@ const App = {
       html += `
         <div class="si-section">
           <div class="si-partners-hdr">
-            <div class="si-label" style="margin-bottom:0">Trading Partners</div>
+            <div class="si-label si-label-flush">Trading Partners</div>
             <span class="si-partners-hint">rank you · them · split</span>
           </div>
           <div class="si-partners">${rows}</div>
@@ -925,9 +946,9 @@ const App = {
     const yVals = years.map(y => yearlyTotals[y]);
     const maxYV = Math.max(...yVals);
     if (maxYV > 0) {
-      const W = 284,
-        H = 48,
-        gap = 2;
+      const W = 284;
+      const H = 48;
+      const gap = 2;
       const barW = (W - gap * (years.length - 1)) / years.length;
       const bars = yVals
         .map((v, i) => {
@@ -954,7 +975,6 @@ const App = {
       }
     });
     if (countryTotal > 0) {
-      const catFull = { 'north-south': 'North → South', 'south-north': 'South → North', 'south-south': 'South → South', 'north-north': 'North → North' };
       const segments = Object.entries(catTotals)
         .sort((a, b) => b[1] - a[1])
         .map(([cat, val]) => ({ cat, pct: (val / countryTotal) * 100 }));
@@ -964,7 +984,7 @@ const App = {
           s => `
             <div class="si-comp-row">
               <div class="si-comp-dot" style="background:${CONFIG.flowColors[s.cat]}"></div>
-              <span class="si-comp-label">${catFull[s.cat]}</span>
+              <span class="si-comp-label">${CAT_LABELS_FULL[s.cat]}</span>
               <span class="si-comp-pct" style="color:${CONFIG.flowColors[s.cat]}">${Math.round(s.pct)}%</span>
             </div>`
         )
@@ -1005,7 +1025,8 @@ const App = {
     const top1Name = sorted[0] ? STATE.countryNames[sorted[0][0]] || sorted[0][0] : '—';
 
     // Thresholds calibrated for trade (not market-competition DOJ levels).
-    let label, badge;
+    let label;
+    let badge;
     if (hhi < 0.2) {
       label = 'Diversified';
       badge = '#72BF44';
@@ -1017,34 +1038,34 @@ const App = {
       badge = '#ef4444';
     }
 
-    const W = 240,
-      H = 110,
-      cx = W / 2,
-      cy = H - 12,
-      r = 84;
-    const startA = Math.PI,
-      endA = 2 * Math.PI;
+    const W = 240;
+    const H = 110;
+    const cx = W / 2;
+    const cy = H - 12;
+    const r = 84;
+    const startA = Math.PI;
+    const endA = 2 * Math.PI;
     const valA = startA + (endA - startA) * Math.min(hhi, 1);
 
     const arcPath = (a1, a2) => {
-      const x1 = cx + r * Math.cos(a1),
-        y1 = cy + r * Math.sin(a1);
-      const x2 = cx + r * Math.cos(a2),
-        y2 = cy + r * Math.sin(a2);
+      const x1 = cx + r * Math.cos(a1);
+      const y1 = cy + r * Math.sin(a1);
+      const x2 = cx + r * Math.cos(a2);
+      const y2 = cy + r * Math.sin(a2);
       return `M${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${a2 - a1 > Math.PI ? 1 : 0},1 ${x2.toFixed(2)},${y2.toFixed(2)}`;
     };
     const tick = v => {
       const a = startA + (endA - startA) * v;
-      const x1 = cx + (r + 3) * Math.cos(a),
-        y1 = cy + (r + 3) * Math.sin(a);
-      const x2 = cx + (r - 7) * Math.cos(a),
-        y2 = cy + (r - 7) * Math.sin(a);
+      const x1 = cx + (r + 3) * Math.cos(a);
+      const y1 = cy + (r + 3) * Math.sin(a);
+      const x2 = cx + (r - 7) * Math.cos(a);
+      const y2 = cy + (r - 7) * Math.sin(a);
       return `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="#AEA29A" stroke-width="1"/>`;
     };
-    const mx1 = cx + (r - 14) * Math.cos(valA),
-      my1 = cy + (r - 14) * Math.sin(valA);
-    const mx2 = cx + (r + 6) * Math.cos(valA),
-      my2 = cy + (r + 6) * Math.sin(valA);
+    const mx1 = cx + (r - 14) * Math.cos(valA);
+    const my1 = cy + (r - 14) * Math.sin(valA);
+    const mx2 = cx + (r + 6) * Math.cos(valA);
+    const my2 = cy + (r + 6) * Math.sin(valA);
 
     return `
       <div class="si-section">
@@ -1059,7 +1080,7 @@ const App = {
             <text x="${cx}" y="${cy - 36}" text-anchor="middle" font-size="22" font-weight="700" fill="#231F20" font-family="Inter,monospace">${(hhi * 10000).toFixed(0)}</text>
             <text x="${cx}" y="${cy - 20}" text-anchor="middle" font-size="9" fill="#6E6259" font-family="Inter,sans-serif">HHI score (0–10000)</text>
           </svg>
-          <div style="text-align:center;margin-top:-4px">
+          <div class="si-badge-wrap">
             <span class="si-badge" style="background:${badge}22;color:${badge};border-color:${badge}44">${label}</span>
           </div>
           <div class="si-hhi-stats">
@@ -1079,16 +1100,16 @@ const App = {
     const [lon1, lat1] = myCoords;
 
     const bearingTo = (lon2, lat2) => {
-      const φ1 = (lat1 * Math.PI) / 180,
-        φ2 = (lat2 * Math.PI) / 180;
+      const φ1 = (lat1 * Math.PI) / 180;
+      const φ2 = (lat2 * Math.PI) / 180;
       const Δλ = ((lon2 - lon1) * Math.PI) / 180;
       const y = Math.sin(Δλ) * Math.cos(φ2);
       const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
       return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
     };
 
-    const SECTORS = 8,
-      SECTOR_WIDTH = 45;
+    const SECTORS = 8;
+    const SECTOR_WIDTH = 45;
     const sectorExp = new Array(SECTORS).fill(0);
     const sectorImp = new Array(SECTORS).fill(0);
     let anyData = false;
@@ -1097,8 +1118,8 @@ const App = {
     const isRegional = STATE.region && STATE.region !== 'Global';
     rawFlows.forEach(d => {
       if (!isRegional || (RegionConfig.getRegion(d.exporter) === STATE.region && RegionConfig.getRegion(d.importer) === STATE.region)) {
-        const isExport = d.exporter === iso,
-          isImport = d.importer === iso;
+        const isExport = d.exporter === iso;
+        const isImport = d.importer === iso;
         if (!isExport && !isImport) return;
         const partnerIso = isExport ? d.importer : d.exporter;
         const c = STATE.countryCoords[partnerIso];
@@ -1112,12 +1133,12 @@ const App = {
     if (!anyData) return '';
 
     const maxVal = Math.max(...sectorExp, ...sectorImp, 1);
-    const W = 220,
-      H = 220,
-      cx = W / 2,
-      cy = H / 2,
-      innerR = 16,
-      maxBarLen = 78;
+    const W = 220;
+    const H = 220;
+    const cx = W / 2;
+    const cy = H / 2;
+    const innerR = 16;
+    const maxBarLen = 78;
     const labels = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
     const parts = [];
 
@@ -1135,10 +1156,10 @@ const App = {
       const impLen = (sectorImp[i] / maxVal) * maxBarLen;
       const drawBar = (len, angleRad, color) => {
         if (len < 0.5) return;
-        const x1 = cx + innerR * Math.cos(angleRad),
-          y1 = cy + innerR * Math.sin(angleRad);
-        const x2 = cx + (innerR + len) * Math.cos(angleRad),
-          y2 = cy + (innerR + len) * Math.sin(angleRad);
+        const x1 = cx + innerR * Math.cos(angleRad);
+        const y1 = cy + innerR * Math.sin(angleRad);
+        const x2 = cx + (innerR + len) * Math.cos(angleRad);
+        const y2 = cy + (innerR + len) * Math.sin(angleRad);
         parts.push(`<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${color}" stroke-width="6" stroke-linecap="round" opacity="0.88"/>`);
       };
       drawBar(expLen, centerRad + offsetRad, '#009EDB');
@@ -1154,7 +1175,7 @@ const App = {
       <div class="si-section">
         <div class="si-label">Trade Fingerprint</div>
         <div class="si-sublabel">${scopeNote}</div>
-        <div class="si-card" style="display:flex;flex-direction:column;align-items:center">
+        <div class="si-card si-card-center">
           <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:220px" preserveAspectRatio="xMidYMid meet">
             ${parts.join('')}
           </svg>
@@ -1162,7 +1183,7 @@ const App = {
             <div class="si-legend-item"><div class="si-legend-swatch" style="background:#009EDB"></div><span>Exports</span></div>
             <div class="si-legend-item"><div class="si-legend-swatch" style="background:#ED1847"></div><span>Imports</span></div>
           </div>
-          <div style="font-size:8px;color:#6E6259;font-style:italic;margin-top:4px;text-align:center">Bar direction = geographic bearing from this country</div>
+          <div class="si-chart-caption">Bar direction = geographic bearing from this country</div>
         </div>
       </div>`;
   },
@@ -1188,8 +1209,8 @@ const App = {
     if (topPartners.length === 0) return '';
 
     const partnerData = topPartners.map(pIso => {
-      let expVal = 0,
-        impVal = 0;
+      let expVal = 0;
+      let impVal = 0;
       if (STATE.bilateralHistory) {
         const [a, b] = [iso, pIso].sort();
         const hist = STATE.bilateralHistory[`${a}|${b}`];
@@ -1219,14 +1240,14 @@ const App = {
     const maxVal = Math.max(...partnerData.map(d => Math.max(d.expVal, d.impVal)), 1);
 
     // Layout: name zone in center, bars diverge left (imports) and right (exports)
-    const W = 280,
-      nameW = 72;
-    const cx = W / 2,
-      leftEdge = cx - nameW / 2,
-      rightEdge = cx + nameW / 2;
-    const barMaxLen = 92,
-      barH = 9,
-      rowGap = 16;
+    const W = 280;
+    const nameW = 72;
+    const cx = W / 2;
+    const leftEdge = cx - nameW / 2;
+    const rightEdge = cx + nameW / 2;
+    const barMaxLen = 92;
+    const barH = 9;
+    const rowGap = 16;
 
     const rows = partnerData
       .map((d, i) => {
@@ -1329,7 +1350,6 @@ const App = {
       }
     });
     const domCat = Object.entries(catTotals).sort((a, b) => b[1] - a[1])[0];
-    const catFull = { 'north-south': 'North→South', 'south-north': 'South→North', 'south-south': 'South→South', 'north-north': 'North→North' };
 
     if (topEntry || domCat) {
       let s = '';
@@ -1340,12 +1360,12 @@ const App = {
       if (domCat && countryTotal > 0) {
         const domPct = Math.round((domCat[1] / countryTotal) * 100);
         const catCol = CONFIG.flowColors[domCat[0]];
-        s += ` <strong style="color:${catCol}">${catFull[domCat[0]]}</strong> flows dominate at ${domPct}%.`;
+        s += ` <strong style="color:${catCol}">${CAT_LABELS_ARROW[domCat[0]]}</strong> flows dominate at ${domPct}%.`;
       }
       if (s) sentences.push(s);
     }
 
-    if (sentences.length === 0) return `<p style="font-size:11px;color:#AEA29A;font-style:italic">No trade data available for this country in the current view.</p>`;
+    if (sentences.length === 0) return `<p class="si-narrative-empty">No trade data available for this country in the current view.</p>`;
     return sentences.map(s => `<p>${s}</p>`).join('');
   },
 
@@ -1357,7 +1377,7 @@ const App = {
     const currentSelectionCount = STATE.selectedExporters.size + STATE.selectedImporters.size;
     if (currentSelectionCount === 0 && this._prevSelectionCount > 0 && STATE.thresholdMode !== 'auto') {
       STATE.thresholdMode = 'auto';
-      const autoBtn = window.appRef.current.querySelector('.threshold-btn[data-threshold="auto"]');
+      const autoBtn = qs('.threshold-btn[data-threshold="auto"]');
       if (autoBtn) this.updateUIClasses('.threshold-btn', autoBtn);
     }
     this._prevSelectionCount = currentSelectionCount;
@@ -1373,18 +1393,18 @@ const App = {
   },
 
   showTooltip(event, iso) {
-    const tooltip = window.appRef.current.querySelector('#tooltip');
+    const tooltip = qs('.tooltip');
     const name = STATE.countryNames[iso] || iso;
     const stats = STATE.nodeStats[iso];
     const mf = METRIC_FORMAT[STATE.metric] || METRIC_FORMAT.value;
 
     const region = RegionConfig.getRegion(iso);
     const devStatus = CONFIG.development[iso] === 'north' ? 'Developed' : 'Developing';
-    const regionTag = region && region !== 'Other' ? `<span style="font-size:9px;color:#6E6259">${region} · ${devStatus}</span>` : '';
+    const regionTag = region && region !== 'Other' ? `<span class="tt-region">${region} · ${devStatus}</span>` : '';
 
     let content = `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px">
-        <div style="font-weight:700;color:#004990;font-size:13px;line-height:1.2">${name}</div>
+      <div class="tt-head">
+        <div class="tt-title">${name}</div>
         ${regionTag}
       </div>`;
 
@@ -1398,21 +1418,21 @@ const App = {
     const balanceColor = isNetExporter ? '#009EDB' : '#ED1847';
     const balanceSign = isNetExporter ? '+' : '';
     const roleLabel = isNetExporter ? 'Net Exporter' : 'Net Importer';
-    const roleBg = isNetExporter ? 'background:rgba(0,158,219,0.15);color:#009EDB' : 'background:rgba(237,24,71,0.15);color:#ED1847';
+    const roleClass = isNetExporter ? 'exp' : 'imp';
 
     content += `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-        <div style="background:#f2f8fc;border:1px solid #DED9D5;border-radius:6px;padding:6px 8px">
-          <div style="font-size:8px;color:#6E6259;text-transform:uppercase;font-weight:700;margin-bottom:2px">${mf.grossLabel.replace(':', '')}</div>
-          <div style="font-size:12px;font-weight:700;color:#231F20;font-family:monospace">${mf.fmt(stats.grossVolume)}</div>
+      <div class="tt-grid">
+        <div class="tt-card">
+          <div class="tt-card-label">${mf.grossLabel.replace(':', '')}</div>
+          <div class="tt-card-value">${mf.fmt(stats.grossVolume)}</div>
         </div>
-        <div style="background:#f2f8fc;border:1px solid #DED9D5;border-radius:6px;padding:6px 8px">
-          <div style="font-size:8px;color:#6E6259;text-transform:uppercase;font-weight:700;margin-bottom:2px">${mf.netLabel.replace(':', '')}</div>
-          <div style="font-size:12px;font-weight:700;font-family:monospace;color:${balanceColor}">${balanceSign}${mf.fmt(Math.abs(stats.netBalance))}</div>
+        <div class="tt-card">
+          <div class="tt-card-label">${mf.netLabel.replace(':', '')}</div>
+          <div class="tt-card-value" style="color:${balanceColor}">${balanceSign}${mf.fmt(Math.abs(stats.netBalance))}</div>
         </div>
       </div>
-      <div style="text-align:center;margin-bottom:8px">
-        <span style="font-size:9px;font-weight:700;padding:2px 10px;border-radius:99px;${roleBg}">${roleLabel}</span>
+      <div class="tt-role-wrap">
+        <span class="tt-role-badge ${roleClass}">${roleLabel}</span>
       </div>`;
 
     const partnerExports = {};
@@ -1448,20 +1468,20 @@ const App = {
           const arrow = isExportTo ? '→' : '←';
           const arrowColor = isExportTo ? '#009EDB' : '#ED1847';
           return `
-            <div style="display:flex;align-items:center;gap:6px;font-size:10px;margin-bottom:3px">
-              <span style="color:${arrowColor};font-weight:700;flex-shrink:0">${arrow}</span>
-              <span style="color:#231F20;width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0">${shortName}</span>
-              <div style="flex:1;height:5px;background:#EBEAE6;border-radius:99px;overflow:hidden">
-                <div style="width:${barPct}%;height:100%;background:${arrowColor};opacity:0.7;border-radius:99px"></div>
+            <div class="tt-partner-row">
+              <span class="tt-partner-arrow" style="color:${arrowColor}">${arrow}</span>
+              <span class="tt-partner-name">${shortName}</span>
+              <div class="tt-partner-bar">
+                <div class="tt-partner-bar-fill" style="width:${barPct}%;background:${arrowColor}"></div>
               </div>
-              <span style="color:#6E6259;font-family:monospace;font-size:9px;width:52px;text-align:right;flex-shrink:0">${mf.fmt(val)}</span>
+              <span class="tt-partner-val">${mf.fmt(val)}</span>
             </div>`;
         })
         .join('');
 
       content += `
-        <div style="padding-top:8px;border-top:1px solid #DED9D5;margin-top:2px">
-          <div style="font-size:9px;color:#6E6259;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Top Partners</div>
+        <div class="tt-section">
+          <div class="tt-section-label">Top Partners</div>
           ${partnerRows}
         </div>`;
     }
@@ -1476,19 +1496,18 @@ const App = {
     });
 
     if (countryTotal > 0) {
-      const catLabels = { 'north-south': 'N→S', 'south-north': 'S→N', 'south-south': 'S→S', 'north-north': 'N→N' };
       const segments = Object.entries(catTotals)
         .sort((a, b) => b[1] - a[1])
         .map(([cat, val]) => ({ cat, pct: (val / countryTotal) * 100 }));
 
       const barSegments = segments.map(s => `<div style="width:${s.pct}%;height:100%;background:${CONFIG.flowColors[s.cat]}"></div>`).join('');
-      const labelSpans = segments.map(s => `<span style="color:${CONFIG.flowColors[s.cat]};font-size:9px;font-weight:700">${catLabels[s.cat]} ${Math.round(s.pct)}%</span>`).join('<span style="color:#DED9D5;font-size:9px;margin:0 2px">·</span>');
+      const labelSpans = segments.map(s => `<span class="tt-flow-label" style="color:${CONFIG.flowColors[s.cat]}">${CAT_LABELS_SHORT[s.cat]} ${Math.round(s.pct)}%</span>`).join('<span class="tt-flow-sep">·</span>');
 
       content += `
-        <div style="margin-top:8px;padding-top:8px;border-top:1px solid #DED9D5">
-          <div style="font-size:9px;color:#6E6259;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Flow Composition</div>
-          <div style="display:flex;height:4px;border-radius:99px;overflow:hidden;gap:1px">${barSegments}</div>
-          <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-top:5px;flex-wrap:wrap">${labelSpans}</div>
+        <div class="tt-section has-extra-margin">
+          <div class="tt-section-label">Flow Composition</div>
+          <div class="tt-flow-bar">${barSegments}</div>
+          <div class="tt-flow-labels">${labelSpans}</div>
         </div>`;
     }
 
@@ -1501,9 +1520,9 @@ const App = {
     const maxYV = Math.max(...yVals);
 
     if (maxYV > 0) {
-      const W = 140,
-        H = 28,
-        gap = 1;
+      const W = 140;
+      const H = 28;
+      const gap = 1;
       const barW = (W - gap * (years.length - 1)) / years.length;
       const bars = yVals
         .map((v, i) => {
@@ -1520,7 +1539,7 @@ const App = {
         const yoy = ((yVals[curIdx] - yVals[curIdx - 1]) / yVals[curIdx - 1]) * 100;
         const yoyCol = yoy >= 0 ? '#72BF44' : '#ED1847';
         const yoySign = yoy >= 0 ? '+' : '';
-        yoyHtml = `<span style="font-size:9px;font-family:monospace;font-weight:700;color:${yoyCol}">${yoySign}${yoy.toFixed(0)}% YoY</span>`;
+        yoyHtml = `<span class="tt-yoy" style="color:${yoyCol}">${yoySign}${yoy.toFixed(0)}% YoY</span>`;
       }
       let cagrHtml = '';
       const firstNonZeroIdx = yVals.findIndex(v => v > 0);
@@ -1529,18 +1548,18 @@ const App = {
         const cagr = ((yVals[curIdx] / yVals[firstNonZeroIdx]) ** (1 / n) - 1) * 100;
         if (Number.isFinite(cagr)) {
           const cagrCol = cagr >= 0 ? '#72BF44' : '#ED1847';
-          cagrHtml = `<span style="font-size:8px;font-family:monospace;color:${cagrCol}">CAGR ${cagr >= 0 ? '+' : ''}${cagr.toFixed(1)}%</span>`;
+          cagrHtml = `<span class="tt-cagr" style="color:${cagrCol}">CAGR ${cagr >= 0 ? '+' : ''}${cagr.toFixed(1)}%</span>`;
         }
       }
 
       content += `
-        <div style="margin-top:8px;padding-top:8px;border-top:1px solid #DED9D5">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
-            <span style="font-size:9px;color:#6E6259;font-weight:700;text-transform:uppercase;letter-spacing:0.05em">Trend</span>
-            <div style="display:flex;align-items:center;gap:8px">${yoyHtml}${cagrHtml}</div>
+        <div class="tt-section has-extra-margin">
+          <div class="tt-trend-head">
+            <span class="tt-section-label">Trend</span>
+            <div class="tt-trend-stats">${yoyHtml}${cagrHtml}</div>
           </div>
-          <svg width="${W}" height="${H}" style="width:100%">${bars}</svg>
-          <div style="display:flex;justify-content:space-between;font-size:8px;color:#AEA29A;font-family:monospace;margin-top:2px">
+          <svg class="tt-trend-bars" width="${W}" height="${H}">${bars}</svg>
+          <div class="tt-trend-axis">
             <span>${years[0]}</span><span>${years[years.length - 1]}</span>
           </div>
         </div>`;
@@ -1554,10 +1573,10 @@ const App = {
       const total = regionCountries.length;
       if (rank > 0) {
         content += `
-          <div style="margin-top:6px;padding-top:6px;border-top:1px solid #DED9D5;font-size:9px;color:#6E6259;display:flex;align-items:center;gap:4px">
-            <span style="color:#004990;font-weight:700;font-size:10px">#${rank}</span>
+          <div class="tt-rank">
+            <span class="tt-rank-num">#${rank}</span>
             <span>of ${total} in ${region}</span>
-            <span style="margin-left:auto;padding:2px 6px;border-radius:4px;font-size:8px;font-weight:700;${roleBg}">${roleLabel}</span>
+            <span class="tt-rank-badge tt-role-badge ${roleClass}">${roleLabel}</span>
           </div>`;
       }
     }
@@ -1570,28 +1589,24 @@ const App = {
     tooltip.style.display = 'block';
     const pad = 15;
 
-    // ツールチップの親コンテナ（マップの枠）のサイズと位置を取得
+    // Compute mouse position relative to the tooltip's container (map area)
     const container = tooltip.parentElement;
     const rect = container.getBoundingClientRect();
-
-    // コンテナ内でのマウスの相対座標を計算
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
 
     const tw = tooltip.offsetWidth;
     const th = tooltip.offsetHeight;
 
-    // 基本はマウスカーソルの右下に配置
+    // Default: place tooltip at the bottom-right of the cursor
     let x = mouseX + pad;
     let y = mouseY + pad;
 
-    // 右にはみ出る場合はマウスの左側に反転
+    // Flip to the left if it would overflow the container's right edge
     if (x + tw > rect.width - pad) x = mouseX - tw - pad;
-
-    // 下にはみ出る場合はマウスの上側に反転
+    // Flip above the cursor if it would overflow the bottom edge
     if (y + th > rect.height - pad) y = mouseY - th - pad;
-
-    // コンテナの左や上にはみ出さないための最終安全措置
+    // Final safety: keep within left/top padding
     if (x < pad) x = pad;
     if (y < pad) y = pad;
 
@@ -1600,12 +1615,12 @@ const App = {
   },
 
   hideTooltip() {
-    window.appRef.current.querySelector('#tooltip').style.display = 'none';
+    qs('.tooltip').style.display = 'none';
   },
 
   toggleMobileLegend() {
-    const panel = window.appRef.current.querySelector('#legend-panel');
-    const backdrop = window.appRef.current.querySelector('#mobile-legend-backdrop');
+    const panel = qs('.legend-panel');
+    const backdrop = qs('.mobile-legend-backdrop');
     const isOpen = panel.classList.contains('mobile-open');
     if (isOpen) {
       panel.classList.remove('mobile-open');
@@ -1617,8 +1632,8 @@ const App = {
   },
 
   toggleMobileFilter() {
-    const panel = window.appRef.current.querySelector('#mobile-filter-panel');
-    const backdrop = window.appRef.current.querySelector('#mobile-filter-backdrop');
+    const panel = qs('.mobile-filter-panel');
+    const backdrop = qs('.mobile-filter-backdrop');
     if (!panel) return;
     const isOpen = panel.classList.contains('open');
     if (isOpen) {
@@ -1631,10 +1646,10 @@ const App = {
   },
 
   syncMobileFilterState() {
-    const activeRegion = window.appRef.current.querySelector(`.region-btn[data-region="${STATE.region || 'Global'}"]`);
+    const activeRegion = qs(`.region-btn[data-region="${STATE.region || 'Global'}"]`);
     if (activeRegion) this.updateUIClasses('.region-btn', activeRegion);
     const threshVal = STATE.thresholdMode === 'auto' || STATE.thresholdMode === undefined ? 'auto' : String(STATE.thresholdMode);
-    const activeThreshold = window.appRef.current.querySelector(`.threshold-btn[data-threshold="${threshVal}"]`);
+    const activeThreshold = qs(`.threshold-btn[data-threshold="${threshVal}"]`);
     if (activeThreshold) this.updateUIClasses('.threshold-btn', activeThreshold);
   }
 };

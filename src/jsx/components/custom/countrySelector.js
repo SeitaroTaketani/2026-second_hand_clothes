@@ -1,6 +1,9 @@
-// countrySelector.js - Hierarchical country selection with collapsible groups
+// Hierarchical country selection with collapsible groups
 
 let _classificationCache = null;
+
+const getRoot = () => window.appRef.current;
+const qs = sel => window.appRef.current.querySelector(sel);
 
 class CountrySelector {
   constructor(elementId, labelId, type) {
@@ -40,11 +43,11 @@ class CountrySelector {
 
   buildDropdown() {
     if (!this.classificationData) return;
-    const list = document.getElementById(`${this.elementId}-list`);
+    const list = qs(`.${this.elementId}-list`);
     if (!list) return;
     list.innerHTML = '';
 
-    // ── Geographic Regions ────────────────────────────────────
+    // Geographic Regions
     this._addSectionHeader(list, '🌍 Geographic Regions');
     const regionOrder = ['5100', '5200', '5300', '5400', '5500'];
     regionOrder.forEach(contCode => {
@@ -82,7 +85,7 @@ class CountrySelector {
       });
     });
 
-    // ── Development Status ────────────────────────────────────
+    // Development Status
     this._addSectionHeader(list, '📊 Development Status');
     ['1500', '1400', '1610'].forEach(devCode => {
       const devGroup = this.classificationData.development[devCode];
@@ -155,9 +158,13 @@ class CountrySelector {
     checkbox.addEventListener('change', e => {
       e.stopPropagation();
       if (e.target.checked) {
-        countries.forEach(code => this.selectedCountries.add(code));
+        countries.forEach(code => {
+          this.selectedCountries.add(code);
+        });
       } else {
-        countries.forEach(code => this.selectedCountries.delete(code));
+        countries.forEach(code => {
+          this.selectedCountries.delete(code);
+        });
       }
       this.updateSelection();
     });
@@ -179,7 +186,6 @@ class CountrySelector {
     const sorted = codes.map(code => ({ code, name: this.classificationData.countries[code]?.name || code })).sort((a, b) => a.name.localeCompare(b.name));
     for (let i = 0; i < sorted.length; i++) {
       const c = sorted[i];
-
       this._addCountryItem(container, c.code, c.name, indentLevel);
     }
   }
@@ -218,7 +224,7 @@ class CountrySelector {
   }
 
   _syncUI() {
-    const labelEl = document.getElementById(this.labelId);
+    const labelEl = qs(`.${this.labelId}`);
     const count = this.selectedCountries.size;
     if (count === 0) {
       labelEl.textContent = this.type === 'exporter' ? 'All Exporters' : 'All Importers';
@@ -234,8 +240,8 @@ class CountrySelector {
       if (cb.checked !== should) cb.checked = should;
     }
     this.syncGroupCheckboxes();
-    const badge = document.getElementById(`${this.elementId}-count`);
-    const btn = document.getElementById(`${this.elementId}-btn`);
+    const badge = qs(`.${this.elementId}-count`);
+    const btn = qs(`.${this.elementId}-btn`);
     if (badge) {
       badge.textContent = count;
       badge.classList.toggle('hidden', count === 0);
@@ -243,20 +249,20 @@ class CountrySelector {
     if (btn) {
       btn.classList.toggle('has-selection', count > 0);
     }
-    const mLabel = document.getElementById(`m-${this.elementId}-label`);
+    const mLabel = qs(`.m-${this.elementId}-label`);
     if (mLabel) mLabel.textContent = labelEl.textContent;
-    const mBadge = document.getElementById(`m-${this.elementId}-count`);
+    const mBadge = qs(`.m-${this.elementId}-count`);
     if (mBadge) {
       mBadge.textContent = count;
       mBadge.classList.toggle('hidden', count === 0);
     }
-    const mBtn = document.getElementById(`m-${this.elementId}-btn`);
+    const mBtn = qs(`.m-${this.elementId}-btn`);
     if (mBtn) mBtn.classList.toggle('has-selection', count > 0);
   }
 
   updateSelection() {
     this._syncUI();
-    document.dispatchEvent(new CustomEvent('shc:selection-change'));
+    getRoot().dispatchEvent(new CustomEvent('shc:selection-change'));
   }
 
   setCountries(codes) {
@@ -265,7 +271,7 @@ class CountrySelector {
   }
 
   syncGroupCheckboxes() {
-    window.appRef.current.querySelectorAll(`#${this.elementId}-list .group-checkbox`).forEach(cb => {
+    window.appRef.current.querySelectorAll(`.${this.elementId}-list .group-checkbox`).forEach(cb => {
       const codes = cb.dataset.groupCountries.split(',');
       const selectedCount = codes.filter(c => this.selectedCountries.has(c)).length;
       cb.checked = selectedCount === codes.length;
@@ -276,6 +282,7 @@ class CountrySelector {
   getSelectedCountries() {
     return Array.from(this.selectedCountries);
   }
+
   clearAll() {
     this.selectedCountries.clear();
     this.updateSelection();
