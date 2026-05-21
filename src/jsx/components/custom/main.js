@@ -189,14 +189,24 @@ const App = {
     };
     setMobileHeight();
 
-    window.addEventListener('resize', () => {
-      setMobileHeight();
+    const redrawMap = () => {
       clearTimeout(this._resizeTimer);
       this._resizeTimer = setTimeout(() => {
         TradeMap.init();
         TradeMap.renderFlows();
       }, 200);
-    });
+    };
+
+    this._resizeHandler = () => {
+      setMobileHeight();
+      redrawMap();
+    };
+    this._appRoot = root;
+
+    window.addEventListener('resize', this._resizeHandler);
+    // Internal layout changes (panel open/close on mobile) use a scoped event
+    // to avoid triggering resize handlers on the parent site
+    root.addEventListener('shc:layout-change', redrawMap);
 
     // Mobile filter panel
     qs('.mobile-filter-btn')?.addEventListener('click', () => this.toggleMobileFilter());
@@ -422,9 +432,9 @@ const App = {
     qs('.insight-panel').classList.add('open');
     getRoot().classList.add('insight-open');
 
-    // Mobile layout: header hides and the map area grows, so trigger a D3 resize
+    // Mobile layout: header hides and map area grows — notify the app only, not the parent site
     if (window.innerWidth <= 767) {
-      setTimeout(() => window.dispatchEvent(new Event('resize')), 10);
+      setTimeout(() => getRoot().dispatchEvent(new CustomEvent('shc:layout-change')), 10);
     }
 
     this._currentPanelIso = iso;
@@ -473,9 +483,9 @@ const App = {
       searouteBtn.classList.remove('active');
     }
 
-    // Mobile layout: header reappears and the map area shrinks, so trigger a D3 resize
+    // Mobile layout: header reappears and map area shrinks — notify the app only, not the parent site
     if (window.innerWidth <= 767) {
-      setTimeout(() => window.dispatchEvent(new Event('resize')), 10);
+      setTimeout(() => getRoot().dispatchEvent(new CustomEvent('shc:layout-change')), 10);
     }
 
     this._currentPanelIso = null;
@@ -587,7 +597,7 @@ const App = {
           <div class="si-legend-item"><div class="si-legend-swatch swatch-imp"></div><span>${impName} exports</span></div>
         </div>
         <svg class="svg-full" width="${W}" height="${H + 14}">
-          <line x1="0" y1="${H / 2}" x2="${W}" y2="${H / 2}" stroke="#DED9D5" stroke-width="0.5"/>
+          <line class="chart-midline" x1="0" y1="${H / 2}" x2="${W}" y2="${H / 2}"/>
           ${bars}
         </svg>
       </div>`;
@@ -1062,7 +1072,7 @@ const App = {
       const y1 = cy + (r + 3) * Math.sin(a);
       const x2 = cx + (r - 7) * Math.cos(a);
       const y2 = cy + (r - 7) * Math.sin(a);
-      return `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="#AEA29A" stroke-width="1"/>`;
+      return `<line class="gauge-tick" x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}"/>`;
     };
     const mx1 = cx + (r - 14) * Math.cos(valA);
     const my1 = cy + (r - 14) * Math.sin(valA);
@@ -1075,12 +1085,12 @@ const App = {
         <div class="si-sublabel">${scopeNote}</div>
         <div class="si-card" data-hhi="${hhiTier}">
           <svg class="svg-gauge" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
-            <path class="hhi-arc-bg" d="${arcPath(startA, endA)}" stroke-width="9" fill="none" stroke-linecap="round"/>
-            <path class="hhi-arc-filled" d="${arcPath(startA, valA)}" stroke-width="9" fill="none" stroke-linecap="round"/>
+            <path class="hhi-arc-bg" d="${arcPath(startA, endA)}"/>
+            <path class="hhi-arc-filled" d="${arcPath(startA, valA)}"/>
             ${tick(0.2)}${tick(0.4)}
-            <line x1="${mx1.toFixed(2)}" y1="${my1.toFixed(2)}" x2="${mx2.toFixed(2)}" y2="${my2.toFixed(2)}" stroke="#231F20" stroke-width="2.5" stroke-linecap="round"/>
-            <text x="${cx}" y="${cy - 36}" text-anchor="middle" font-size="22" font-weight="700" fill="#231F20" font-family="Inter,monospace">${(hhi * 10000).toFixed(0)}</text>
-            <text x="${cx}" y="${cy - 20}" text-anchor="middle" font-size="9" fill="#6E6259" font-family="Inter,sans-serif">HHI score (0–10000)</text>
+            <line class="gauge-needle" x1="${mx1.toFixed(2)}" y1="${my1.toFixed(2)}" x2="${mx2.toFixed(2)}" y2="${my2.toFixed(2)}"/>
+            <text class="gauge-score" x="${cx}" y="${cy - 36}" text-anchor="middle">${(hhi * 10000).toFixed(0)}</text>
+            <text class="gauge-sublabel" x="${cx}" y="${cy - 20}" text-anchor="middle">HHI score (0–10000)</text>
           </svg>
           <div class="si-badge-wrap">
             <span class="si-badge hhi-badge">${label}</span>
@@ -1146,10 +1156,10 @@ const App = {
 
     [0.25, 0.5, 1].forEach(p => {
       const rr = innerR + maxBarLen * p;
-      parts.push(`<circle cx="${cx}" cy="${cy}" r="${rr}" fill="none" stroke="#E2E8F0" stroke-width="0.6" ${p < 1 ? 'stroke-dasharray="2 3"' : ''}/>`);
+      parts.push(`<circle class="polar-grid-ring${p < 1 ? ' dashed' : ''}" cx="${cx}" cy="${cy}" r="${rr}"/>`);
     });
-    parts.push(`<line x1="${cx}" y1="${cy - innerR - maxBarLen}" x2="${cx}" y2="${cy + innerR + maxBarLen}" stroke="#E2E8F0" stroke-width="0.5"/>`);
-    parts.push(`<line x1="${cx - innerR - maxBarLen}" y1="${cy}" x2="${cx + innerR + maxBarLen}" y2="${cy}" stroke="#E2E8F0" stroke-width="0.5"/>`);
+    parts.push(`<line class="polar-grid-axis" x1="${cx}" y1="${cy - innerR - maxBarLen}" x2="${cx}" y2="${cy + innerR + maxBarLen}"/>`);
+    parts.push(`<line class="polar-grid-axis" x1="${cx - innerR - maxBarLen}" y1="${cy}" x2="${cx + innerR + maxBarLen}" y2="${cy}"/>`);
 
     for (let i = 0; i < SECTORS; i++) {
       const centerRad = ((i * SECTOR_WIDTH - 90) * Math.PI) / 180;
@@ -1168,9 +1178,9 @@ const App = {
       drawBar(impLen, centerRad - offsetRad, 'polar-imp');
 
       const labelR = innerR + maxBarLen + 14;
-      parts.push(`<text x="${(cx + labelR * Math.cos(centerRad)).toFixed(2)}" y="${(cy + labelR * Math.sin(centerRad) + 3).toFixed(2)}" text-anchor="middle" font-size="10" font-weight="700" fill="#AEA29A" font-family="Inter,sans-serif">${labels[i]}</text>`);
+      parts.push(`<text class="polar-label" x="${(cx + labelR * Math.cos(centerRad)).toFixed(2)}" y="${(cy + labelR * Math.sin(centerRad) + 3).toFixed(2)}" text-anchor="middle">${labels[i]}</text>`);
     }
-    parts.push(`<circle cx="${cx}" cy="${cy}" r="3.2" fill="#231F20"/>`);
+    parts.push(`<circle class="polar-center" cx="${cx}" cy="${cy}" r="3.2"/>`);
 
     const scopeNote = isRegional ? `${STATE.region} intra-regional · pre-threshold` : 'All net bilateral flows · pre-threshold';
     return `
@@ -1261,7 +1271,7 @@ const App = {
 
         const impBar = impLen > 0 ? `<rect class="butterfly-imp" x="${(leftEdge - impLen).toFixed(1)}" y="${y}" width="${impLen.toFixed(1)}" height="${barH}" rx="2"/>` : '';
         const expBar = expLen > 0 ? `<rect class="butterfly-exp" x="${rightEdge}" y="${y}" width="${expLen.toFixed(1)}" height="${barH}" rx="2"/>` : '';
-        const nameEl = `<text x="${cx}" y="${y + barH - 1}" text-anchor="middle" font-size="7.5" fill="#231F20" font-family="Inter,sans-serif">${shortName}</text>`;
+        const nameEl = `<text class="butterfly-label" x="${cx}" y="${y + barH - 1}" text-anchor="middle">${shortName}</text>`;
 
         return `${impBar}${expBar}${nameEl}`;
       })
@@ -1272,8 +1282,8 @@ const App = {
     const grid = `
       <text class="butterfly-axis-imp" x="${(leftEdge - barMaxLen / 2).toFixed(0)}" y="-4" text-anchor="middle">← Imports</text>
       <text class="butterfly-axis-exp" x="${(rightEdge + barMaxLen / 2).toFixed(0)}" y="-4" text-anchor="middle">Exports →</text>
-      <line x1="${leftEdge}" y1="0" x2="${leftEdge}" y2="${totalH}" stroke="#E2E8F0" stroke-width="0.6" stroke-dasharray="2,2"/>
-      <line x1="${rightEdge}" y1="0" x2="${rightEdge}" y2="${totalH}" stroke="#E2E8F0" stroke-width="0.6" stroke-dasharray="2,2"/>`;
+      <line class="butterfly-grid-line" x1="${leftEdge}" y1="0" x2="${leftEdge}" y2="${totalH}"/>
+      <line class="butterfly-grid-line" x1="${rightEdge}" y1="0" x2="${rightEdge}" y2="${totalH}"/>`;
 
     const scopeNote = isRegional ? `${STATE.region} · top 7 · pre-threshold` : 'Top 7 partners · gross bilateral · pre-threshold';
 
@@ -1642,6 +1652,15 @@ const App = {
     } else {
       panel.classList.add('open');
       backdrop.classList.remove('hidden');
+    }
+  },
+
+  destroy() {
+    if (this._resizeHandler) {
+      window.removeEventListener('resize', this._resizeHandler);
+      this._appRoot?.removeEventListener('shc:layout-change', this._resizeHandler);
+      this._resizeHandler = null;
+      this._appRoot = null;
     }
   },
 

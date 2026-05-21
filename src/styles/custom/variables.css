@@ -41,6 +41,9 @@
   /* Mobile viewport height (set dynamically by JS to handle iOS Safari URL bar) */
   --vh: 1vh;
 
+  /* Chart grid lines in SVG visualizations */
+  --chart-grid: #e2e8f0;
+
   /* Shadows */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);

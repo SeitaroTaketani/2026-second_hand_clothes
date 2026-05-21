@@ -60,7 +60,7 @@
         color: var(--unblue-text);
       }
       &.kpi-value-imp {
-        color: #c0392b;
+        color: var(--unred-dark);
       }
       &.kpi-value-ns {
         color: var(--unblue);

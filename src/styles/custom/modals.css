@@ -233,7 +233,7 @@
     color: var(--unyellow);
   }
   .method-hhi-band-concentrated {
-    color: #ef4444;
+    color: var(--col-danger);
   }
 
   /* Footer link */

@@ -207,7 +207,7 @@
   .legend-node-importer-strong {
     width: 14px;
     height: 14px;
-    background: #ed1847;
+    background: var(--unred-dark);
   }
   .legend-node-importer-mid {
     width: 10px;

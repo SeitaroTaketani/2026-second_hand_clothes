@@ -41,6 +41,7 @@ const App = () => {
       root.removeEventListener('shc:country-click', onCountryClick);
       root.removeEventListener('shc:country-hover', onCountryHover);
       root.removeEventListener('shc:country-hoverend', onCountryHoverEnd);
+      MainApp.destroy();
     };
   }, []);
 
