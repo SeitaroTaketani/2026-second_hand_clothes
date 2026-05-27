@@ -17,7 +17,6 @@
     "@biomejs/biome": "^2.4.14",
     "@mdx-js/react": "^3.1.1",
     "@mdx-js/rollup": "^3.1.1",
-    "@playwright/test": "^1.60.0",
     "@vitejs/plugin-react": "^6.0.1",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
