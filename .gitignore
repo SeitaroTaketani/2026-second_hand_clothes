@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Vite cache
+.vite/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+tests/
+test-results/
+playwright.config.*
+
+# Editor / tool settings
+.claude/
+*.local
