@@ -1,17 +1,37 @@
 import { ascending, max as d3max, sum as d3sum, easeCubicOut, easeElasticOut, format, geoGraticule, geoNaturalEarth1, geoPath, interpolateHcl, quantile, scaleLinear, scaleSqrt, select, zoom, zoomIdentity, zoomTransform } from 'd3';
 
-import { CONFIG, STATE } from './config.js';
+import { STATE } from './config.js';
 import { RegionConfig } from './regions.js';
 
 const FC = {
   'north-south': 'flow-ns',
   'south-north': 'flow-sn',
   'south-south': 'flow-ss',
-  'north-north': 'flow-nn',
+  'north-north': 'flow-nn'
 };
 
 const getRoot = () => window.appRef.current;
 const qs = sel => window.appRef.current.querySelector(sel);
+
+// Color constants read from CSS variables once on first map init.
+// Centralizes all map colors so they live in colors.css, not in JS.
+let C = null;
+const initColors = () => {
+  if (C) return;
+  const s = getComputedStyle(getRoot());
+  const v = name => s.getPropertyValue(name).trim();
+  C = {
+    land: v('--map-land-fill'), // default country fill
+    hover: v('--map-hover-fill'), // mouseover country fill
+    focus: v('--map-focus-fill'), // focused-country and partner fill
+    hatchFill: v('--map-disputed-fill'), // disputed territory hatching
+    hatchStroke: v('--ungrey'), // disputed territory hatch lines
+    scaleRed: v('--unred-dark'), // color scale: net importer pole
+    scaleImpMid: v('--legend-imp-mid'), // color scale: mild importer
+    scaleExpMid: v('--legend-exp-mid'), // color scale: mild exporter
+    scaleBlue: v('--unblue') // color scale: net exporter pole
+  };
+};
 
 export const TradeMap = {
   // Numeric ISO 3166 → ISO 3-letter code mapping.
@@ -283,13 +303,14 @@ export const TradeMap = {
   },
 
   init2D(container) {
-    // Disable native touch scrolling so the map can capture pan/pinch gestures
-    this.svg = select(container).append('svg').attr('class', 'map-2d-layer').style('position', 'absolute').style('top', '0').style('left', '0').style('z-index', '1').style('touch-action', 'none');
+    initColors();
+    // Positioning and touch-action are handled by the .map-2d-layer CSS class
+    this.svg = select(container).append('svg').attr('class', 'map-2d-layer');
 
     const defs = this.svg.append('defs');
     const hatch = defs.append('pattern').attr('id', 'aksai-chin-hatch').attr('patternUnits', 'userSpaceOnUse').attr('width', 2).attr('height', 2).attr('patternTransform', 'rotate(45)');
-    hatch.append('rect').attr('width', 2).attr('height', 2).attr('fill', '#F0EDE8');
-    hatch.append('line').attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 2).attr('stroke', '#AEA29A').attr('stroke-width', 0.8);
+    hatch.append('rect').attr('width', 2).attr('height', 2).attr('fill', C.hatchFill);
+    hatch.append('line').attr('x1', 0).attr('y1', 0).attr('x2', 0).attr('y2', 2).attr('stroke', C.hatchStroke).attr('stroke-width', 0.8);
 
     this.g = this.svg.append('g');
     // GeoJSON graticule is immutable, generate once
@@ -390,26 +411,25 @@ export const TradeMap = {
 
     const graticulePath = landLayer.selectAll('.graticule').data([this._graticuleGeo || geoGraticule()()]);
 
-    graticulePath.enter().append('path').attr('class', 'graticule').attr('fill', 'none').attr('stroke', '#EBEAE6').attr('stroke-width', 0.5).attr('stroke-opacity', 0.8).merge(graticulePath).attr('d', this.path);
+    // Graticule visual style is handled by the .graticule CSS class
+    graticulePath.enter().append('path').attr('class', 'graticule').merge(graticulePath).attr('d', this.path);
 
     const lands = landLayer.selectAll('path.land').data(STATE.geoData.features, d => d.properties.id || d.id);
 
     lands.exit().remove();
 
+    // Stroke, stroke-width, and transition are handled by the .land CSS class
     const landsEnter = lands
       .enter()
       .append('path')
       .attr('class', 'land')
-      .attr('stroke', '#DED9D5')
-      .attr('stroke-width', 0.5)
-      .style('transition', 'fill 0.2s ease')
       .on('mouseover', (_event, d) => {
         if (!d?.properties) return;
         const group = this._getHoverGroup(String(d.properties.code));
         this.g
           .selectAll('path.land')
           .filter(ld => ld?.properties && group.has(String(ld.properties.code)))
-          .attr('fill', ld => this._specialFill(ld, '#EBEAE6'));
+          .attr('fill', ld => this._specialFill(ld, C.hover));
       })
       .on('mouseout', (_event, d) => {
         if (!d?.properties) return;
@@ -420,12 +440,12 @@ export const TradeMap = {
         this.g
           .selectAll('path.land')
           .filter(ld => ld?.properties && group.has(String(ld.properties.code)))
-          .attr('fill', ld => this._specialFill(ld, focusGroup.has(String(ld.properties.code)) ? '#EAF4FB' : '#FAFAFA'));
+          .attr('fill', ld => this._specialFill(ld, focusGroup.has(String(ld.properties.code)) ? C.focus : C.land));
       });
 
     landsEnter
       .merge(lands)
-      .attr('fill', d => this._specialFill(d, '#FAFAFA'))
+      .attr('fill', d => this._specialFill(d, C.land))
       .attr('d', this.path);
 
     this._renderBorderLayers(landLayer);
@@ -435,14 +455,17 @@ export const TradeMap = {
   _renderBorderLayers(landLayer) {
     if (!STATE.borderLayers) return;
 
+    // stroke, stroke-width, and stroke-dasharray are handled by the .border-* CSS classes
     const specs = [
-      { key: 'plain', cls: 'border-plain', dasharray: null, stroke: '#C8C2BB', width: 0.4 },
-      { key: 'dashed', cls: 'border-dashed', dasharray: '4,3', stroke: '#9B9189', width: 0.5 },
-      { key: 'dotted', cls: 'border-dotted', dasharray: '1.5,2.5', stroke: '#9B9189', width: 0.5 },
-      { key: 'dashDotted', cls: 'border-dash-dotted', dasharray: '5,2,1.5,2', stroke: '#9B9189', width: 0.5 }
+      { key: 'plain', cls: 'border-plain' },
+      { key: 'dashed', cls: 'border-dashed' },
+      { key: 'dotted', cls: 'border-dotted' },
+      { key: 'dashDotted', cls: 'border-dash-dotted' }
     ];
 
-    specs.forEach(({ key, cls, dasharray, stroke, width }) => {
+    // Visual style (fill, stroke, stroke-width, stroke-linecap, pointer-events)
+    // is handled by the .border and .border-* CSS classes
+    specs.forEach(({ key, cls }) => {
       const features = STATE.borderLayers[key];
       if (!features) return;
 
@@ -450,9 +473,7 @@ export const TradeMap = {
 
       paths.exit().remove();
 
-      const entered = paths.enter().append('path').attr('class', `border ${cls}`).attr('fill', 'none').attr('stroke', stroke).attr('stroke-width', width).attr('stroke-linecap', 'round').style('pointer-events', 'none');
-
-      if (dasharray) entered.attr('stroke-dasharray', dasharray);
+      const entered = paths.enter().append('path').attr('class', `border ${cls}`);
 
       entered.merge(paths).attr('d', this.path);
     });
@@ -468,15 +489,12 @@ export const TradeMap = {
 
       dots.exit().remove();
 
+      // fill, stroke, and pointer-events are handled by the .economy-point CSS class
       dots
         .enter()
         .append('circle')
         .attr('class', 'economy-point')
         .attr('r', 2)
-        .attr('fill', '#FAFAFA')
-        .attr('stroke', '#DED9D5')
-        .attr('stroke-width', 0.5)
-        .style('pointer-events', 'none')
         .merge(dots)
         .attr('cx', d => (this.projection(d.geometry.coordinates) || [])[0])
         .attr('cy', d => (this.projection(d.geometry.coordinates) || [])[1]);
@@ -624,7 +642,7 @@ export const TradeMap = {
     const maxTransformed = Math.sqrt(p98NetBal);
     const _colorScaleFn = scaleLinear()
       .domain([-maxTransformed, -maxTransformed * 0.15, 0, maxTransformed * 0.15, maxTransformed])
-      .range(['#ED1847', '#F9C0C5', '#ffffff', '#C5DFEF', '#009EDB'])
+      .range([C.scaleRed, C.scaleImpMid, '#fff', C.scaleExpMid, C.scaleBlue])
       .interpolate(interpolateHcl)
       .clamp(true);
     const colorScale = val => _colorScaleFn(Math.sign(val) * Math.sqrt(Math.abs(val)));
@@ -710,11 +728,11 @@ export const TradeMap = {
 
     nodes.exit().transition().duration(500).attr('r', 0).style('opacity', 0).remove();
 
+    // stroke is handled by the .country-node CSS class
     const nodesEnter = nodes
       .enter()
       .append('circle')
       .attr('class', 'country-node')
-      .attr('stroke', '#DED9D5')
       .style('opacity', 0)
       .on('mouseover', (event, d) => root.dispatchEvent(new CustomEvent('shc:country-hover', { detail: { event, country: d } })))
       .on('mouseout', () => root.dispatchEvent(new CustomEvent('shc:country-hoverend')))
@@ -760,16 +778,9 @@ export const TradeMap = {
 
     labels.exit().transition().duration(300).style('opacity', 0).remove();
 
-    const labelsEnter = labels
-      .enter()
-      .append('text')
-      .attr('class', 'map-label map-label-unified')
-      .attr('font-family', 'Inter, sans-serif')
-      .attr('font-weight', '600')
-      .style('pointer-events', 'none')
-      // Modern paint-order keeps the white halo strictly outside the glyph
-      .style('paint-order', 'stroke fill')
-      .style('opacity', 0);
+    // font-family, font-weight, fill, stroke, paint-order, and pointer-events
+    // are handled by the .map-label CSS class
+    const labelsEnter = labels.enter().append('text').attr('class', 'map-label map-label-unified').style('opacity', 0);
 
     const labelOpacity = d => {
       if (!focusedIso) return 1;
@@ -780,9 +791,7 @@ export const TradeMap = {
     labelsEnter
       .merge(labels)
       .text(d => STATE.countryNames[d] || d)
-      .attr('fill', '#6E6259')
-      .attr('stroke', '#FAFAFA')
-      .attr('stroke-linejoin', 'round')
+      // fill, stroke, stroke-linejoin, and paint-order are handled by .map-label CSS class
       .transition()
       .duration(750)
       .attr('x', d => projOf(d)[0] + radiusScale(nodeStats[d].grossVolume) / currentK + 4)
@@ -892,7 +901,7 @@ export const TradeMap = {
       .duration(450)
       .style('opacity', d => (d && highlightCodes.has(String(d.properties.code)) ? 1 : 0.35))
       .attr('fill', d => {
-        const base = d && highlightCodes.has(String(d.properties.code)) ? '#EAF4FB' : '#FAFAFA';
+        const base = d && highlightCodes.has(String(d.properties.code)) ? C.focus : C.land;
         return self._specialFill(d, base);
       });
 
@@ -964,7 +973,7 @@ export const TradeMap = {
       .transition()
       .duration(400)
       .style('opacity', 1)
-      .attr('fill', d => this._specialFill(d, '#FAFAFA'));
+      .attr('fill', d => this._specialFill(d, C.land));
 
     this._clearHalo();
     this._clearParticles();
@@ -1022,7 +1031,8 @@ export const TradeMap = {
       const dur = `${(4.5 - intensity * 2.3).toFixed(2)}s`;
       for (let i = 0; i < count; i++) {
         const offset = i / count;
-        const particle = layer.append('circle').attr('class', `trade-particle ${FC[d.flowCategory]}`).attr('r', 1.6).attr('stroke', '#ffffff').attr('stroke-width', 0.4).attr('opacity', 0.95);
+        // stroke and stroke-width are handled by the .trade-particle CSS class
+        const particle = layer.append('circle').attr('class', `trade-particle ${FC[d.flowCategory]}`).attr('r', 1.6).attr('opacity', 0.95);
 
         const motion = particle
           .append('animateMotion')

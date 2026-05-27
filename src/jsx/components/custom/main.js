@@ -312,13 +312,21 @@ const App = {
       if (!term) {
         // Reset to default: section/group rows visible, all children collapsed
         menu.classList.remove('is-searching');
-        menu.querySelectorAll('.country-option').forEach(c => c.classList.remove('search-hidden'));
-        menu.querySelectorAll('.group-children').forEach(c => c.classList.add('hidden'));
-        menu.querySelectorAll('.group-toggle').forEach(t => t.setAttribute('aria-expanded', 'false'));
+        menu.querySelectorAll('.country-option').forEach(c => {
+          c.classList.remove('search-hidden');
+        });
+        menu.querySelectorAll('.group-children').forEach(c => {
+          c.classList.add('hidden');
+        });
+        menu.querySelectorAll('.group-toggle').forEach(t => {
+          t.setAttribute('aria-expanded', 'false');
+        });
       } else {
         // Search mode: CSS hides section/group rows and expands children; filter country items
         menu.classList.add('is-searching');
-        menu.querySelectorAll('.group-children').forEach(c => c.classList.remove('hidden'));
+        menu.querySelectorAll('.group-children').forEach(c => {
+          c.classList.remove('hidden');
+        });
         menu.querySelectorAll('.country-option').forEach(item => {
           const text = item.innerText.toLowerCase();
           item.classList.toggle('search-hidden', !text.includes(term));
@@ -455,8 +463,8 @@ const App = {
     }
   },
 
-  // Delegate clicks on the partner-list action buttons (one listener instead of
-  // inline onclick handlers that need a global window.App reference)
+  // Delegate clicks on partner-list action buttons via event delegation
+  // (one listener per panel; no per-button handlers or global window.App reference needed)
   _wirePanelButtons(panelBody, iso) {
     panelBody.addEventListener('click', e => {
       const btn = e.target.closest('.si-btn');
@@ -900,9 +908,7 @@ const App = {
           const theirRank = getPartnerRank(iso, pIso);
           const rankTier = theirRank <= 3 ? 'high' : theirRank <= 10 ? 'mid' : 'low';
           const rankTip = theirRank > 0 ? `${pName} ranks ${isoName} as their #${theirRank} trading partner (pre-threshold)` : '';
-          const rankDisplay = theirRank > 0
-            ? `<span class="rank-display"><span class="rank-pos">${idx + 1}·</span><span class="rank-partner" data-tier="${rankTier}" title="${rankTip}">#${theirRank}</span></span>`
-            : `<span class="rank-muted">${idx + 1}</span>`;
+          const rankDisplay = theirRank > 0 ? `<span class="rank-display"><span class="rank-pos">${idx + 1}·</span><span class="rank-partner" data-tier="${rankTier}" title="${rankTip}">#${theirRank}</span></span>` : `<span class="rank-muted">${idx + 1}</span>`;
 
           // Bilateral flow split: share flowing in the dominant direction (pre-threshold gross flows)
           let splitBadge = '';

@@ -66,6 +66,15 @@
     overflow: hidden;
   }
 
+  /* D3 SVG layer — fills the map container, captures pointer events for pan/pinch */
+  .map-2d-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    touch-action: none;
+  }
+
   /* Map container */
 
   .map-container {
@@ -173,11 +182,62 @@
   /* Map elements (D3 SVG) */
 
   .land {
+    fill: var(--map-land-fill);
+    stroke: var(--ungrey-border);
+    stroke-width: 0.5;
     cursor: grab;
     transition: fill 0.2s ease;
   }
   .land:active {
     cursor: grabbing;
+  }
+
+  /* D3 graticule lines */
+  .graticule {
+    fill: none;
+    stroke: var(--ungrey-bg);
+    stroke-width: 0.5;
+    stroke-opacity: 0.8;
+    pointer-events: none;
+  }
+
+  /* Political border lines — stroke/dasharray set per subclass; no pointer events */
+  .border {
+    fill: none;
+    stroke-linecap: round;
+    pointer-events: none;
+  }
+  .border-plain {
+    stroke: var(--col-border-plain);
+    stroke-width: 0.4;
+  }
+  .border-dashed {
+    stroke: var(--col-border-dashed);
+    stroke-width: 0.5;
+    stroke-dasharray: 4, 3;
+  }
+  .border-dotted {
+    stroke: var(--col-border-dashed);
+    stroke-width: 0.5;
+    stroke-dasharray: 1.5, 2.5;
+  }
+  .border-dash-dotted {
+    stroke: var(--col-border-dashed);
+    stroke-width: 0.5;
+    stroke-dasharray: 5, 2, 1.5, 2;
+  }
+
+  /* Small island nation point features */
+  .economy-point {
+    fill: var(--map-land-fill);
+    stroke: var(--ungrey-border);
+    stroke-width: 0.5;
+    pointer-events: none;
+  }
+
+  /* Country circle nodes — fill driven by D3 color scale; only stroke is static */
+  .country-node {
+    stroke: var(--ungrey-border);
   }
 
   .trade-arc {
@@ -217,17 +277,21 @@
 
   .trade-particle {
     fill: var(--flow-color, #0284c7);
+    stroke: #fff;
+    stroke-width: 0.4;
     pointer-events: none;
     filter: drop-shadow(0 0 1.5px rgb(255 255 255 / 90%));
   }
 
+  /* SVG text labels — paint-order creates white halo behind text glyphs.
+     stroke-width and font-size are set dynamically by D3 (zoom-dependent). */
   .map-label {
     font-family: var(--font-family);
     font-weight: 600;
-    fill: var(--ungrey-dark);
-    text-shadow:
-      0 0 3px #fff,
-      0 0 5px #fff;
+    fill: var(--ungrey-text);
+    stroke: var(--map-land-fill);
+    stroke-linejoin: round;
+    paint-order: stroke fill;
     pointer-events: none;
   }
 
@@ -377,7 +441,7 @@
     margin-left: 8px;
   }
   .picker-badge.importer {
-    background: #b45309;
+    background: var(--col-compare);
   }
 
   .filter-row {

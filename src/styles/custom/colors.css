@@ -36,6 +36,32 @@
   /* Danger / error state (used for HHI concentrated, delete actions, etc.) */
   --col-danger: #ef4444;
 
+  /* Compare / amber accent (used for country comparison feature) */
+  --col-compare: #b45309;
+  --col-compare-dark: #b06e2a;
+
+  /* Warning badge (manual threshold indicator) */
+  --col-warning-text: #92400e;
+  --col-warning-bg: #fefce8;
+  --col-warning-border: #fcd34d;
+
+  /* Experimental badge text on yellow background */
+  --col-badge-yellow-text: #4a3800;
+
+  /* Legend node tints — import/export intensity indicators */
+  --legend-imp-mid: #f9c0c5;
+  --legend-imp-weak: #f7dfdf;
+  --legend-exp-weak: #e3edf6;
+  --legend-exp-mid: #c5dfef;
+
+  /* Map element colors */
+  --map-land-fill: #fafafa;
+  --map-hover-fill: var(--ungrey-bg);
+  --map-focus-fill: #eaf4fb;
+  --map-disputed-fill: #f0ede8;
+  --col-border-plain: #c8c2bb;
+  --col-border-dashed: #9b9189;
+
   /* Flow category colors (UNCTAD semantic) */
   --flow-north-south: var(--unblue);
   --flow-south-north: var(--ungreen);

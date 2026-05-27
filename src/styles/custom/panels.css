@@ -212,12 +212,12 @@
   .legend-node-importer-mid {
     width: 10px;
     height: 10px;
-    background: #f9c0c5;
+    background: var(--legend-imp-mid);
   }
   .legend-node-importer-weak {
     width: 7px;
     height: 7px;
-    background: #f7dfdf;
+    background: var(--legend-imp-weak);
   }
   .legend-node-balanced {
     width: 4px;
@@ -228,12 +228,12 @@
   .legend-node-exporter-weak {
     width: 7px;
     height: 7px;
-    background: #e3edf6;
+    background: var(--legend-exp-weak);
   }
   .legend-node-exporter-mid {
     width: 10px;
     height: 10px;
-    background: #c5dfef;
+    background: var(--legend-exp-mid);
   }
   .legend-node-exporter-strong {
     width: 14px;
@@ -252,9 +252,9 @@
     white-space: nowrap;
 
     &.manual {
-      color: #92400e;
-      background: #fefce8;
-      border-color: #fcd34d;
+      color: var(--col-warning-text);
+      background: var(--col-warning-bg);
+      border-color: var(--col-warning-border);
     }
   }
 
@@ -385,7 +385,7 @@
           font-size: var(--fs-micro);
           font-weight: 800;
           letter-spacing: 0.07em;
-          color: #4a3800;
+          color: var(--col-badge-yellow-text);
           background: var(--unyellow-un);
           border-radius: 3px;
           text-transform: uppercase;
