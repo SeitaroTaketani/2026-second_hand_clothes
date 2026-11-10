@@ -1,27 +1,25 @@
-@import url('./colors.css');
+/* Ported from UNCTAD-TED/SHC-trade-visualization: src/styles/variables.css (commit 9e98152). */
 #app-root-2026-second_hand_clothes {
+  /* Layout, typography and shape tokens (colours: colors.css).
+
+   Layout modes — CSS cannot keep media queries in variables, so the rules repeat them.
+   Keep in sync with COMPACT_MQ in src/config.js.
+     compact        (max-width: 767px), (max-height: 500px) and (max-width: 1024px)
+                    phones in any orientation: bottom navigation, filter sheet
+     compact-tall   (max-width: 767px) and (min-height: 501px)      portrait phones
+     compact-short  (max-height: 500px) and (max-width: 1024px)     landscape phones
+     desktop        (min-width: 768px) and (min-height: 501px), (min-width: 1025px)
+     narrow         (max-width: 1279px)     small laptops and tablets: icon-only header buttons */
   /* Layout */
-  --header-height-desktop: auto;
   --content-max-width: 1600px;
-  --panel-legend-width: clamp(160px, 14vw, 220px);
-  --panel-insight-width: clamp(280px, 30vw, 380px);
+  --panel-insight-width: clamp(280px, 25vw, 380px);
+  --nav-h: 58px; /* phone bottom navigation bar */
+  --si-partner-cols: 16px 12px minmax(0, 1fr) 34px 62px 40px 36px; /* partner table (insight.css) */
+
   /* Typography */
-  --font-family: Inter, Arial, sans-serif;
+  --font-family: Inter, 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-mono: 'Inter', ui-monospace, monospace;
-  /* Spacing */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  /* Border radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
-  /* Breakpoints */
-  --bp-md: 768px;
-  --bp-xl: 1280px;
-  /* Font sizes */
+  /* Font sizes (same scale as the unctad-infovis tracker) */
   --fs-micro: 0.5625rem; /* 9px */
   --fs-xxs: 0.625rem; /* 10px */
   --fs-xs: 0.6875rem; /* 11px */
@@ -31,12 +29,14 @@
   --fs-body: 0.9375rem; /* 15px */
   --fs-md: 1.0625rem; /* 17px */
   --fs-xl: 1.5rem; /* 24px */
-  /* Mobile viewport height (set dynamically by JS to handle iOS Safari URL bar) */
-  --vh: 1vh;
-  /* Chart grid lines in SVG visualizations */
-  --chart-grid: #e2e8f0;
+
+  /* Border radius — unctad.org is near-square (most of its rules use 0) */
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 3px;
+  --radius-xl: 4px;
+
   /* Shadows */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.15);
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 8%);
+  --shadow-md: 0 2px 8px rgb(0 0 0 / 10%);
 }

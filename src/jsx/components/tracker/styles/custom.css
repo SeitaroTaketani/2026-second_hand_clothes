@@ -1,17 +1,56 @@
-/* Overrides for the embedded build: visual polish that should stay scoped to the app */
+/*
+ * Map fixes made in this repo (land fills via classes, Abyei, borders / labels / nodes). Imported LAST.
+ * The embedding layout (max 1350px, 16:9 map box) is in base.css.
+ */
 #app-root-2026-second_hand_clothes {
-  .hidden {
+  /* Land fills via CSS classes (map.js toggles is-hovered / is-focused / is-dimmed; bf7ee46) */
+  .land {
+    fill: var(--map-land-fill);
+    stroke: var(--map-land-stroke, var(--un-color-grey-light));
+    transition:
+      fill 0.45s ease,
+      stroke 0.45s ease;
+
+    &.is-hovered {
+      fill: var(--map-hover-fill);
+    }
+    &.is-focused {
+      fill: var(--map-focus-fill);
+    }
+    /* Dimmed = a lighter grey that still reads as land. Replaces opacity: 0.35,
+       as per-shape opacity made every repaint of the map far more costly. */
+    &.is-dimmed {
+      fill: #d8d3d0;
+      stroke: #d6d1cd;
+    }
+  }
+  /* Abyei (C00001) — 323aeed "Removed Abyei polygon". Leaves a hole in the map
+     (the sea colour shows through). To paint it as land instead:
+     .land[data-code='C00001'] { fill: var(--map-land-fill); pointer-events: none; } */
+  .land[data-code='C00001'] {
     display: none;
   }
-  .main-header {
-    border-bottom: none;
+  .economy-point {
+    fill: var(--map-land-fill);
+    stroke: var(--map-land-stroke, var(--un-color-grey-light));
   }
-  .kpi-bar {
-    background-color: var(--unblue-bg);
-    border-top: none;
-    box-shadow: none;
+
+  /* Borders / labels / nodes (323aeed, f465924; widths and dashes come from map.js per zoom step) */
+  .border-dashed,
+  .border-dotted,
+  .border-dash-dotted {
+    stroke-linecap: round;
   }
-  .legend-panel {
-    background-color: var(--unblue-bg);
+  .map-label-nsgt {
+    fill: var(--un-color-grey);
+    font-weight: 500;
+  }
+  .map-label-territory {
+    fill: var(--un-color-grey);
+    font-weight: 400;
+    font-style: italic;
+  }
+  .country-node {
+    stroke: rgb(255 255 255 / 50%);
   }
 }

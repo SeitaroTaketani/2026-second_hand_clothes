@@ -1,0 +1,27 @@
+/*
+ * Embedding reset — imported FIRST.
+ * The tracker was designed for a page with only its own CSS and the browser defaults.
+ * On unctad.org (and in this repo) element selectors from the host page leak in: the
+ * Drupal theme, and @unctad-infovis/general-tools/styles/styles.css (`.app h3`, `.app h4`,
+ * `.app p`: font sizes, max-width 700px, margin auto auto 20px, padding 0 10px).
+ * `all: revert` restores the browser defaults for these elements.
+ * Specificity (1,0,0) beats `.app p` (0,1,1) and loses against every tracker rule
+ * (all are `#app-root-… <something>`, i.e. ≥ (1,0,1), or equal and later).
+ */
+#app-root-2026-second_hand_clothes {
+  /* The tracker's own type scale, whatever the article's base font size and line height */
+  font-size: 16px;
+  line-height: normal;
+  letter-spacing: normal;
+  text-align: left;
+
+  :where(h1, h2, h3, h4, h5, h6, p, a, ul, ol, li, dl, dt, dd, button, input, select, textarea, label, table, caption, th, td, img, em, strong, small, code, sub, sup, header, footer, main, section, nav, figure, blockquote, aside, fieldset, legend, details, summary, kbd) {
+    all: revert;
+  }
+  /* unctad.org runs Bootstrap 5 (theme newyork_b5). Its component classes share names with
+     the tracker's own (.modal-backdrop is position:fixed / z-index 1050 and would cover the
+     tracker's pop-ups; .tooltip has opacity 0; .btn-close draws its own icon). Same reset. */
+  :where(.modal-backdrop, .modal-header, .modal-body, .modal-title, .modal-card, .tooltip, .btn-close, .fade, .show, .active, .collapsed, .visible) {
+    all: revert;
+  }
+}

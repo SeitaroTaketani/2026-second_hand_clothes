@@ -6,6 +6,7 @@ import '@unctad-infovis/general-tools/styles/styles.css';
 
 import meta from './../meta.json';
 
+import { ensureExternalStyles, installCallDelegation, teardownDomHelpers } from './components/tracker/custom/dom.js';
 import MainApp from './components/tracker/custom/main.js';
 import Tracker from './components/tracker/Tracker.jsx';
 
@@ -18,6 +19,8 @@ const App = () => {
 
   useEffect(() => {
     window.appRef = appRef;
+    ensureExternalStyles();
+    installCallDelegation();
     MainApp.init();
 
     const root = appRef.current;
@@ -39,12 +42,13 @@ const App = () => {
       root.removeEventListener('shc:country-click', onCountryClick);
       root.removeEventListener('shc:country-hover', onCountryHover);
       root.removeEventListener('shc:country-hoverend', onCountryHoverEnd);
-      MainApp.destroy();
+      // Removes the resize listeners (MainApp.destroy() did this before)
+      teardownDomHelpers();
     };
   }, []);
 
   return (
-    <div className="app" ref={appRef}>
+    <div className="app mode-explore" ref={appRef}>
       <Article components={components} meta={meta} />
     </div>
   );

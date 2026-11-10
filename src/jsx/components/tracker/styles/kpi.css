@@ -1,70 +1,105 @@
-@import url('./variables.css');
+/* Ported from UNCTAD-TED/SHC-trade-visualization: src/styles/kpi.css (commit 9e98152). */
 #app-root-2026-second_hand_clothes {
-  /* KPI Bar */
+  /* Key figures for the current view */
   .kpi-bar {
-    padding: 6px 16px;
-    z-index: 20;
-    flex-shrink: 0;
     background: var(--unblue-bg);
-    transition: background 0.3s ease;
+    border-bottom: 1px solid var(--un-color-grey-light);
+    flex-shrink: 0;
+    z-index: 20;
+
     .kpi-inner {
-      max-width: var(--content-max-width);
-      display: flex;
       align-items: center;
-      justify-content: flex-start;
-      gap: 10px;
-      margin: 0 auto;
-      flex-wrap: wrap;
-      overflow-x: auto;
-      @media (min-width: 768px) {
-        justify-content: center;
-        flex-wrap: wrap;
-      }
-    }
-    .kpi-item {
       display: flex;
+      flex-wrap: wrap;
+      gap: 6px 18px;
+      justify-content: center;
+      margin: 0 auto;
+      max-width: var(--content-max-width);
+      padding: 6px 16px;
+    }
+
+    .kpi-item {
       align-items: baseline;
-      gap: 4px;
+      display: flex;
+      gap: 6px;
+      min-width: 0;
       white-space: nowrap;
-      flex-shrink: 0;
-      &.kpi-item-col {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0;
-      }
     }
+
     .kpi-label {
-      font-size: var(--fs-xs);
-      font-weight: 600;
       color: var(--un-color-grey-dark);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+      font-size: var(--fs-xs);
+      font-weight: 500;
     }
+
     .kpi-value {
-      font-family: var(--font-mono);
-      font-size: var(--fs-base);
-      font-weight: 700;
       color: var(--ungrey-dark);
-      transition: color 0.3s ease;
-      &.kpi-value-exp {
-        color: var(--un-color-blue-dark);
+      font-size: var(--fs-label);
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
+      /* A small key in front of the value (circle = economy, line = flow direction) */
+      &.kpi-value-exp::before,
+      &.kpi-value-imp::before,
+      &.kpi-value-ns::before,
+      &.kpi-value-ss::before {
+        content: '';
+        display: inline-block;
+        margin-right: 5px;
       }
-      &.kpi-value-imp {
-        color: var(--un-color-red);
+      &.kpi-value-exp::before,
+      &.kpi-value-imp::before {
+        border-radius: 50%;
+        height: 8px;
+        vertical-align: 0.05em;
+        width: 8px;
       }
-      &.kpi-value-ns {
-        color: var(--un-color-blue);
+      &.kpi-value-ns::before,
+      &.kpi-value-ss::before {
+        height: 3px;
+        vertical-align: 0.25em;
+        width: 12px;
       }
-      &.kpi-value-ss {
-        color: var(--un-color-yellow);
+      &.kpi-value-exp::before {
+        background: var(--un-color-blue);
+      }
+      &.kpi-value-imp::before {
+        background: var(--un-color-red);
+      }
+      &.kpi-value-ns::before {
+        background: var(--flow-north-south);
+      }
+      &.kpi-value-ss::before {
+        background: var(--flow-south-south);
       }
     }
+
+    .kpi-sub {
+      color: var(--un-color-grey-dark);
+      font-size: var(--fs-xs);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kpi-scope .kpi-value {
+      color: var(--ungrey-dark);
+      max-width: 260px;
+    }
+
     .kpi-divider {
-      width: 1px;
-      height: 16px;
-      flex-shrink: 0;
       background: var(--un-color-grey-light);
+      flex-shrink: 0;
+      height: 16px;
+      width: 1px;
+    }
+
+    /* Narrow desktops: the two share figures give way so the bar fits one row */
+    @media (max-width: 1199px) and (min-width: 768px) {
+      .kpi-share,
+      .kpi-share-div {
+        display: none;
+      }
     }
   }
 }

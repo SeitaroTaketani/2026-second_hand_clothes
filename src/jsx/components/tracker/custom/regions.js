@@ -1,9 +1,10 @@
+// Ported from UNCTAD-TED/SHC-trade-visualization: src/regions.js (commit 9e98152).
 export const RegionConfig = {
   // UNCTAD 5 Major Regions + Global Definition
   regions: {
     Global: { center: [0, 20], scale: 1.3 },
     Africa: { center: [20, 0], scale: 2.5 },
-    Americas: { center: [-80, 10], scale: 1.8 }, // Centered so both North and South America are visible
+    Americas: { center: [-80, 10], scale: 1.8 }, // shows both North and South America
     Asia: { center: [100, 30], scale: 2.0 },
     Europe: { center: [15, 50], scale: 3.5 },
     Oceania: { center: [140, -25], scale: 3.0 }
@@ -66,6 +67,13 @@ export const RegionConfig = {
     TZA: 'Africa',
     ZMB: 'Africa',
     ZWE: 'Africa',
+    // territories and areas (UN M49: Africa)
+    ESH: 'Africa',
+    SHN: 'Africa',
+    IOT: 'Africa',
+    ATF: 'Africa',
+    MYT: 'Africa',
+    REU: 'Africa',
 
     // --- Americas ---
     ATG: 'Americas',
@@ -103,6 +111,29 @@ export const RegionConfig = {
     USA: 'Americas',
     URY: 'Americas',
     VEN: 'Americas',
+    // territories and areas (UN M49: Americas)
+    GRL: 'Americas',
+    BMU: 'Americas',
+    SPM: 'Americas',
+    AIA: 'Americas',
+    ABW: 'Americas',
+    BES: 'Americas',
+    VGB: 'Americas',
+    CYM: 'Americas',
+    CUW: 'Americas',
+    BLM: 'Americas',
+    MSR: 'Americas',
+    SXM: 'Americas',
+    TCA: 'Americas',
+    FLK: 'Americas',
+    SGS: 'Americas',
+    BVT: 'Americas',
+    PRI: 'Americas',
+    VIR: 'Americas',
+    GLP: 'Americas',
+    MTQ: 'Americas',
+    GUF: 'Americas',
+    MAF: 'Americas',
 
     // --- Asia (Middle East included) ---
     AFG: 'Asia',
@@ -155,6 +186,7 @@ export const RegionConfig = {
     UZB: 'Asia',
     VNM: 'Asia',
     YEM: 'Asia',
+    PSE: 'Asia',
 
     // --- Europe ---
     ALB: 'Europe',
@@ -201,6 +233,14 @@ export const RegionConfig = {
     UKR: 'Europe',
     GBR: 'Europe',
     VAT: 'Europe',
+    // territories and areas (UN M49: Europe)
+    FRO: 'Europe',
+    GIB: 'Europe',
+    GGY: 'Europe',
+    JEY: 'Europe',
+    IMN: 'Europe',
+    ALA: 'Europe',
+    SJM: 'Europe',
 
     // --- Oceania ---
     AUS: 'Oceania',
@@ -216,7 +256,23 @@ export const RegionConfig = {
     SLB: 'Oceania',
     TON: 'Oceania',
     TUV: 'Oceania',
-    VUT: 'Oceania'
+    VUT: 'Oceania',
+    // territories and areas (UN M49: Oceania)
+    NCL: 'Oceania',
+    PYF: 'Oceania',
+    WLF: 'Oceania',
+    ASM: 'Oceania',
+    GUM: 'Oceania',
+    MNP: 'Oceania',
+    UMI: 'Oceania',
+    NIU: 'Oceania',
+    COK: 'Oceania',
+    TKL: 'Oceania',
+    PCN: 'Oceania',
+    NFK: 'Oceania',
+    CXR: 'Oceania',
+    CCK: 'Oceania',
+    HMD: 'Oceania'
   },
 
   getRegion(isoCode) {

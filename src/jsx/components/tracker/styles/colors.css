@@ -1,37 +1,48 @@
-/* Tracker-specific colour tokens — only values not covered by --un-color-* in src/styles/colors.css */
+/* Ported from UNCTAD-TED/SHC-trade-visualization: src/styles/colors.css (commit 9e98152). */
 #app-root-2026-second_hand_clothes {
-  /* Near-black text / UI foreground — darker than --un-color-grey-darkest (#4f4740) */
-  --ungrey-dark: #222;
+  /* Colour tokens.
+   --un-color-*: the official UN palette of @unctad-infovis/general-tools (same names and values).
+   On UNCTAD.org the package defines them; they are repeated here for the stand-alone page.
+   The other tokens are tracker colours with no --un-color-* equivalent. */
+  /* Official UN palette (general-tools) */
+  --un-color-blue: #009edb;
+  --un-color-blue-darkest: #004987;
+  --un-color-blue-light: #c5dfef;
+  --un-color-blue-text: #0077b8;
+  --un-color-red: #ed1847;
+  --un-color-red-text: #eb0045;
+  --un-color-red-text-dark: #ab1d37;
+  --un-color-green: #72bf44;
+  --un-color-yellow: #fbaf17;
+  --un-color-grey: #aea29a;
+  --un-color-grey-dark: #6e6259;
+  --un-color-grey-light: #ded9d5;
+  --un-color-grey-lightest: #ebeae6;
 
-  /* Light blue page backgrounds — no --un-color-* equivalent */
+  /* Tracker-specific colour tokens — only values not covered by --un-color-* */
+  /* Near-black text (UN black) */
+  --ungrey-dark: #231f20;
+  --ungrey-light: #f5f5f5;
+
+  /* Blues */
+  --unblue-darker: #003a75;
+  --unblue-light: #7bb7e1;
   --unblue-bg: #f2f8fc;
   --unblue-bg-alt: #f3f8fd;
-  /* UN ceremonial yellow — slightly different from --un-color-yellow */
-  --unyellow-un: #ffcb05;
 
-  /* Danger / error state */
-  --col-danger: #ef4444;
-
-  /* Compare / amber accent */
-  --col-compare: #b45309;
-
-  /* Warning badge */
-  --col-warning-text: #92400e;
-  --col-warning-bg: #fefce8;
-  --col-warning-border: #fcd34d;
-
-  /* Experimental badge text on yellow background */
-  --col-badge-yellow-text: #4a3800;
-
-  /* Map element colors */
-  --map-land-fill: #ded9d5;
-  --map-hover-fill: #ded9d5;
+  /* Map */
+  --map-land-fill: #d0c9c3; /* a step darker than the #ded9d5 used before */
+  --map-hover-fill: #bdb5ae;
   --map-focus-fill: var(--un-color-blue-light);
+  --map-land-stroke: #c8c2bb;
+  /* Borders are white (UN cartographic standard: lines read as negative space) */
   --col-border-plain: #fff;
   --col-border-dashed: #fff;
-  /* Flow category colors */
-  --flow-north-south: var(--un-color-blue);
-  --flow-south-north: var(--un-color-green);
-  --flow-south-south: var(--un-color-yellow);
-  --flow-north-north: var(--un-color-purple);
+
+  /* Flow categories (developed = "north", developing = "south").
+     Keep in sync with CONFIG.flowColors in src/config.js, which colours the lines. */
+  --flow-north-south: #009edb;
+  --flow-south-north: #72bf44;
+  --flow-south-south: #fbaf17;
+  --flow-north-north: #a066aa;
 }

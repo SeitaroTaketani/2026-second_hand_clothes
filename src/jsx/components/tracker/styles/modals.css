@@ -1,44 +1,49 @@
-@import url('./variables.css');
+/* Ported from UNCTAD-TED/SHC-trade-visualization: src/styles/modals.css (commit 9e98152). */
 #app-root-2026-second_hand_clothes {
   /* Shared modal backdrop */
   .modal-backdrop {
-    backdrop-filter: blur(2px);
-    background: rgb(0 0 0 / 50%);
+    background: rgb(35 31 32 / 45%);
     inset: 0;
     position: absolute;
   }
+
   /* Shared modal card */
   .modal-card {
     background: #fff;
-    border-radius: var(--radius-md);
     border: 1px solid var(--un-color-grey-light);
-    box-shadow: var(--shadow-md);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 32px rgb(0 0 0 / 18%);
     display: flex;
     flex-direction: column;
-    max-height: calc(100% - 32px);
+    max-height: calc(100% - 32px); /* relative to map-area, not viewport */
     position: relative;
+
     .modal-header {
       align-items: center;
-      background: var(--unblue-bg);
-      border-bottom: 1px solid var(--un-color-grey-lightest);
+      background: #fff;
+      border-bottom: 1px solid var(--ungrey-dark);
       display: flex;
       flex-shrink: 0;
       justify-content: space-between;
-      padding: 14px 20px;
+      padding: 16px 20px 12px;
+
       .modal-title {
         color: var(--ungrey-dark);
-        font-size: var(--fs-body);
+        font-size: var(--fs-md);
         font-weight: 700;
+        line-height: 1.25;
       }
+
       .modal-subtitle {
         color: var(--un-color-grey-dark);
-        font-size: var(--fs-sm);
-        margin-top: 2px;
+        font-size: 11.5px;
+        margin-top: 3px;
       }
+
       .btn-close {
         background: transparent;
-        border-radius: var(--radius-lg);
         border: none;
+        border-radius: var(--radius-sm);
         color: var(--un-color-grey-dark);
         cursor: pointer;
         padding: 4px;
@@ -49,42 +54,64 @@
           background: var(--un-color-grey-lightest);
           color: var(--ungrey-dark);
         }
+        &:focus-visible {
+          outline: 2px solid var(--un-color-blue);
+          outline-offset: 1px;
+        }
       }
     }
+
     .modal-body {
       flex: 1;
       overflow-y: auto;
-      padding: 16px 20px;
+      overscroll-behavior: contain; /* scrolling the text never scrolls the page behind */
+      padding: 14px 20px 20px;
+
+      &::-webkit-scrollbar {
+        width: 4px;
+      }
+      &::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      &::-webkit-scrollbar-thumb {
+        background: var(--un-color-grey-light);
+        border-radius: 2px;
+      }
     }
   }
-  /* Arc Detail Modal */
+
+  /* Arc Detail Modal (P2-A) */
   .arc-modal {
     align-items: center;
     animation: shc-modal-fade-in 0.18s ease;
-    display: flex;
+    display: flex; /* hidden class overrides this when closed */
     inset: 0;
     justify-content: center;
     position: absolute;
     z-index: 40;
+
     .modal-card {
       max-width: 95vw;
       width: 520px;
     }
   }
-  /* Compare Modal */
+
+  /* Compare Modal (P2-B) */
   .compare-modal {
     align-items: center;
     animation: shc-modal-fade-in 0.18s ease;
-    display: flex;
+    display: flex; /* hidden class overrides this when closed */
     inset: 0;
     justify-content: center;
     position: absolute;
     z-index: 40;
+
     .modal-card {
       max-width: 95vw;
       width: 680px;
     }
   }
+
   /* Methodology Modal */
   .methodology-modal {
     align-items: center;
@@ -94,129 +121,138 @@
     justify-content: center;
     position: fixed;
     z-index: 200;
+
     .modal-backdrop {
       position: fixed;
     }
+
     .methodology-card {
       max-height: calc(100vh - 48px);
       max-width: calc(100vw - 32px);
       width: 640px;
     }
   }
-  /* Method content */
+
   .method-body {
     color: var(--ungrey-dark);
-    font-size: var(--fs-base);
+    font-size: 12.5px;
     line-height: 1.6;
   }
+
   .method-section {
     border-bottom: 1px solid var(--un-color-grey-lightest);
     margin-bottom: 16px;
     padding-bottom: 16px;
+
     &.method-section-last {
       border-bottom: none;
       margin-bottom: 0;
       padding-bottom: 0;
     }
   }
+
   .method-section-title {
-    color: var(--un-color-blue-darkest);
-    font-size: var(--fs-sm);
+    color: var(--ungrey-dark);
+    font-size: var(--fs-base);
     font-weight: 700;
-    letter-spacing: 0.06em;
     margin: 0 0 8px;
-    text-transform: uppercase;
   }
+
   .method-note {
-    color: var(--un-color-grey-dark);
-    font-size: var(--fs-label);
-    line-height: 1.5;
+    color: var(--ungrey-dark);
+    font-size: var(--fs-sm);
+    line-height: 1.55;
     margin: 0 0 8px;
   }
+
   .method-dl {
     display: grid;
     gap: 4px 12px;
     grid-template-columns: 160px 1fr;
     margin: 0;
+
     dt {
-      align-items: center;
+      align-items: baseline;
       color: var(--ungrey-dark);
       display: flex;
-      font-size: var(--fs-label);
+      font-size: var(--fs-sm);
       font-weight: 600;
       gap: 6px;
       padding: 3px 0;
     }
+
     dd {
-      color: var(--un-color-grey-dark);
-      font-size: var(--fs-label);
+      color: var(--ungrey-dark);
+      font-size: var(--fs-sm);
       margin: 0;
       padding: 3px 0;
     }
   }
+
   .method-flow-dot {
-    border-radius: 2px;
+    align-self: center;
     display: inline-block;
     flex-shrink: 0;
     height: 3px;
-    width: 10px;
+    width: 14px;
   }
-  .method-flow-dot-ns {
-    background: var(--un-color-blue);
-  }
-  .method-flow-dot-sn {
-    background: var(--un-color-green);
-  }
-  .method-flow-dot-ss {
-    background: var(--un-color-yellow);
-  }
-  .method-flow-dot-nn {
-    background: var(--un-color-purple);
-  }
-  .method-body code {
-    background: var(--un-color-grey-lightest);
-    border-radius: 3px;
-    color: var(--ungrey-dark);
-    font-family: var(--font-mono);
-    font-size: var(--fs-sm);
-    padding: 1px 4px;
-  }
-  .method-cite {
-    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-    color: var(--un-color-grey-dark);
-    font-size: var(--fs-label);
-    margin: 0;
-    padding: 8px 12px;
-  }
+
   .method-hhi-band {
     display: inline-block;
+    height: 10px;
+    margin-right: 6px;
+    vertical-align: -1px;
+    width: 10px;
   }
-  .method-hhi-band-diversified {
-    color: var(--un-color-green);
+
+  .method-body code {
+    background: var(--un-color-grey-lightest);
+    border-radius: var(--radius-sm);
+    color: var(--ungrey-dark);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xxs);
+    padding: 1px 4px;
   }
-  .method-hhi-band-moderate {
-    color: var(--un-color-yellow);
+
+  .method-cite {
+    background: var(--ungrey-light);
+    border: 1px solid var(--un-color-grey-light);
+    color: var(--ungrey-dark);
+    font-size: var(--fs-sm);
+    margin: 0;
+    padding: 10px 12px;
   }
-  .method-hhi-band-concentrated {
-    color: var(--col-danger);
-  }
-  /* Footer link */
+
+  /* Footer methodology link */
   .footer-method-link {
     margin-top: 4px;
   }
+
   .footer-link-btn {
     background: none;
     border: none;
-    color: inherit;
+    color: var(--un-color-blue-darkest);
     cursor: pointer;
     font-family: inherit;
     font-size: inherit;
     padding: 0;
     text-decoration: underline;
+    text-underline-offset: 2px;
     transition: color 0.15s;
+
+    &:hover {
+      color: var(--un-color-blue);
+    }
   }
-  a:hover,
-  .footer-link-btn:hover {
-    text-decoration: none;
+}
+
+@keyframes shc-modal-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }
