@@ -130,7 +130,20 @@ NAME_TO_ISO = {
 
 # Fallback coordinates: mirrors DataLoader.fallbackData from dataLoader.js
 # These always override CSV-derived coords (same behaviour as JS).
+# GRL, NCL and KIR correct CSV coordinates that sat on Denmark, France and the
+# open sea; VAT ... BVT are economies in the data that the CSV gives no position.
 FALLBACK = {
+    "GRL": {"name": "Greenland",                "coords": [-42.0, 72.0]},
+    "NCL": {"name": "New Caledonia",            "coords": [165.6, -21.3]},
+    "KIR": {"name": "Kiribati",                 "coords": [173.0, 1.4]},
+    "VAT": {"name": "Holy See",                 "coords": [12.45, 41.9]},
+    "TKL": {"name": "Tokelau",                  "coords": [-171.85, -9.2]},
+    "PCN": {"name": "Pitcairn",                 "coords": [-130.1, -25.07]},
+    "SGS": {"name": "South Georgia and the South Sandwich Islands", "coords": [-36.6, -54.4]},
+    "NFK": {"name": "Norfolk Island",           "coords": [167.95, -29.04]},
+    "UMI": {"name": "United States Minor Outlying Islands", "coords": [166.63, 19.29]},
+    "CCK": {"name": "Cocos (Keeling) Islands",  "coords": [96.83, -12.19]},
+    "BVT": {"name": "Bouvet Island",            "coords": [3.4, -54.43]},
     "AGO": {"name": "Angola",                   "coords": [17.87, -11.20]},
     "ARM": {"name": "Armenia",                  "coords": [45.03, 40.06]},
     "ATG": {"name": "Antigua and Barbuda",       "coords": [-61.79, 17.06]},
@@ -180,7 +193,6 @@ FALLBACK = {
     "GIB": {"name": "Gibraltar",               "coords": [-5.35, 36.14]},
     "GUM": {"name": "Guam",                    "coords": [144.79, 13.44]},
     "IOT": {"name": "British Indian Ocean Territory", "coords": [71.88, -6.34]},
-    "KIR": {"name": "Kiribati",                "coords": [-168.73, -3.37]},
     "KNA": {"name": "Saint Kitts and Nevis",   "coords": [-62.78, 17.36]},
     "LCA": {"name": "Saint Lucia",             "coords": [-60.98, 13.91]},
     "MHL": {"name": "Marshall Islands",        "coords": [171.18, 7.13]},
@@ -214,6 +226,17 @@ SPECIAL = frozenset([
 ])
 
 EXPORT_VALUE_COL = 'Reporter Export To Trade Partner BACI-harmonized trade value (FOB basis, robust)'
+# Weight analogue of EXPORT_VALUE_COL: the reporter's export weight to the partner.
+# (Header carries leading/trailing spaces in the raw CSV; they are stripped on read.)
+EXPORT_WEIGHT_COL = 'Reporter Export to Trade partner Harmonized BACI Weight'
+
+# Metrics to emit. Each produces a parallel set of JSON files.
+#   value  -> data/        (USD, unchanged from the original pipeline)
+#   weight -> data/weight/  (kilograms, new)
+METRICS = {
+    'value':  {'out_dir': 'data',                          'amount': 'value'},
+    'weight': {'out_dir': os.path.join('data', 'weight'),  'amount': 'weight'},
+}
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -247,7 +270,7 @@ def flow_category(exp_iso, imp_iso):
 # Read CSV
 # ---------------------------------------------------------------------------
 print("Reading BACI.csv …")
-records = []     # [{year, exporter, importer, value}]
+rows = []        # [{year, exporter, importer, value, weight}]  (all valid rows)
 csv_coords = {}  # iso -> [lon, lat]  (first occurrence wins)
 csv_names = {}   # iso -> display name
 
@@ -265,6 +288,15 @@ with open(csv_path, newline='', encoding='utf-8-sig') as f:
         val_idx = next(
             i for i, h in enumerate(headers)
             if 'baci-harmonized trade value' in h.lower() and 'fob basis' in h.lower()
+        )
+
+    # Find the index of the export weight column (analogue of the value column)
+    try:
+        wt_idx = headers.index(EXPORT_WEIGHT_COL)
+    except ValueError:
+        wt_idx = next(
+            i for i, h in enumerate(headers)
+            if 'reporter export to trade partner' in h.lower() and 'weight' in h.lower()
         )
 
     year_idx      = headers.index('Year')
@@ -309,21 +341,23 @@ with open(csv_path, newline='', encoding='utf-8-sig') as f:
         if imp_iso not in csv_names:
             csv_names[imp_iso] = partner
 
-        value = parse_num(row[val_idx])
-        if value <= 0:
-            continue
-
         try:
             year = int(row[year_idx])
         except ValueError:
             continue
 
-        records.append({'year': year, 'exporter': exp_iso, 'importer': imp_iso, 'value': value})
+        rows.append({
+            'year':     year,
+            'exporter': exp_iso,
+            'importer': imp_iso,
+            'value':    parse_num(row[val_idx]),
+            'weight':   parse_num(row[wt_idx]),
+        })
 
-print(f"  {len(records):,} valid records loaded")
+print(f"  {len(rows):,} valid rows loaded")
 
 # ---------------------------------------------------------------------------
-# Build meta.json
+# Build meta.json (metric-independent — written once)
 # ---------------------------------------------------------------------------
 print("Building meta.json …")
 
@@ -336,9 +370,21 @@ for iso, fb in FALLBACK.items():
     if iso not in merged_names:
         merged_names[iso] = fb['name']
 
+# Display names: the official UN name (UNSD M49) wherever one exists. The CSV
+# carries BACI abbreviations ("Br. Virgin Isds") and some names garbled by a
+# character-encoding mix-up ("CuraÁao"); meta.json names are only used where
+# the map file has no label of its own, so this mainly affects small economies.
+M49_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'un_m49_names.csv')
+with open(M49_PATH, newline='', encoding='utf-8') as f:
+    un_names = {r['ISO3']: r['Name'] for r in csv.DictReader(f)}
+for iso in merged_names:
+    if iso in un_names:
+        merged_names[iso] = un_names[iso]
+
 # Combine into meta: only export entries that have both coords and name
+# (sorted, so that re-running the script gives a byte-identical file)
 meta = {}
-all_isos = set(merged_coords.keys()) | set(merged_names.keys())
+all_isos = sorted(set(merged_coords.keys()) | set(merged_names.keys()))
 for iso in all_isos:
     if iso in merged_coords and iso in merged_names:
         meta[iso] = {'name': merged_names[iso], 'coords': merged_coords[iso]}
@@ -347,86 +393,87 @@ with open(os.path.join('data', 'meta.json'), 'w', encoding='utf-8') as f:
     json.dump(meta, f, ensure_ascii=False, separators=(',', ':'))
 print(f"  meta.json: {len(meta)} countries")
 
-# ---------------------------------------------------------------------------
-# Build trend_summary.json
-# ---------------------------------------------------------------------------
-print("Building trend_summary.json …")
-
-# For each record, add the export value to BOTH sides (exporter and importer),
-# mirroring the JS pattern:  if (d.exporter===iso || d.importer===iso) total += d.value
-trend = defaultdict(lambda: defaultdict(float))
-for r in records:
-    y = str(r['year'])
-    trend[r['exporter']][y] += r['value']
-    trend[r['importer']][y] += r['value']
-
-trend_out = {iso: dict(years) for iso, years in trend.items()}
-with open(os.path.join('data', 'trend_summary.json'), 'w', encoding='utf-8') as f:
-    json.dump(trend_out, f, ensure_ascii=False, separators=(',', ':'))
-print(f"  trend_summary.json: {len(trend_out)} countries")
 
 # ---------------------------------------------------------------------------
-# Build per-year net flow JSONs + bilateral_history.json
+# Build all metric-dependent outputs for a single metric
 # ---------------------------------------------------------------------------
-print("Building per-year net flow JSONs and bilateral_history.json …")
+def build_metric(metric, out_dir, amount_key):
+    """Emit trend_summary.json, per-year net-flow JSONs and bilateral_history.json
+    for one metric (value or weight) into out_dir, using amount_key as the figure."""
+    os.makedirs(out_dir, exist_ok=True)
 
-# Group records by year
-by_year = defaultdict(list)
-for r in records:
-    by_year[r['year']].append(r)
+    # Keep only rows that carry a positive figure for this metric, preserving order.
+    records = [r for r in rows if r[amount_key] > 0]
+    print(f"\n[{metric}] {len(records):,} records (figure = '{amount_key}') -> {out_dir}/")
 
-# bilateral_history: { "A|B" (A <= B lex): { "YYYY": { "aToB": ..., "bToA": ... } } }
-bilateral = defaultdict(lambda: defaultdict(lambda: {'aToB': 0.0, 'bToA': 0.0}))
+    # --- trend_summary.json ---
+    # Add each record's figure to BOTH sides (exporter and importer), mirroring the
+    # JS pattern: if (d.exporter===iso || d.importer===iso) total += figure
+    trend = defaultdict(lambda: defaultdict(float))
+    for r in records:
+        y = str(r['year'])
+        trend[r['exporter']][y] += r[amount_key]
+        trend[r['importer']][y] += r[amount_key]
 
-for year, yr_records in sorted(by_year.items()):
-    # Accumulate into pair map for net flow, and into bilateral for history
-    pair_map = {}  # key -> {a, b, aToB, bToA}
+    trend_out = {iso: dict(years) for iso, years in trend.items()}
+    with open(os.path.join(out_dir, 'trend_summary.json'), 'w', encoding='utf-8') as f:
+        json.dump(trend_out, f, ensure_ascii=False, separators=(',', ':'))
+    print(f"  trend_summary.json: {len(trend_out)} countries")
 
-    for r in yr_records:
-        exp, imp, val = r['exporter'], r['importer'], r['value']
-        a, b = sorted([exp, imp])
-        key = f"{a}|{b}"
+    # --- per-year net flow JSONs + bilateral_history.json ---
+    by_year = defaultdict(list)
+    for r in records:
+        by_year[r['year']].append(r)
 
-        # Net flow pair map
-        if key not in pair_map:
-            pair_map[key] = {'a': a, 'b': b, 'aToB': 0.0, 'bToA': 0.0}
-        if exp == a:
-            pair_map[key]['aToB'] += val
-        else:
-            pair_map[key]['bToA'] += val
+    # bilateral_history: { "A|B" (A <= B lex): { "YYYY": { "aToB": ..., "bToA": ... } } }
+    bilateral = defaultdict(lambda: defaultdict(lambda: {'aToB': 0.0, 'bToA': 0.0}))
 
-        # Bilateral history
-        y_str = str(year)
-        if exp == a:
-            bilateral[key][y_str]['aToB'] += val
-        else:
-            bilateral[key][y_str]['bToA'] += val
+    for year, yr_records in sorted(by_year.items()):
+        pair_map = {}  # key -> {a, b, aToB, bToA}
 
-    # Compute net flows for this year
-    flows = []
-    for key, p in pair_map.items():
-        net = p['aToB'] - p['bToA']
-        if net == 0:
-            continue
-        exporter = p['a'] if net > 0 else p['b']
-        importer = p['b'] if net > 0 else p['a']
-        net_value = abs(net)
-        flows.append({
-            'exporter':     exporter,
-            'importer':     importer,
-            'netValue':     round(net_value, 2),
-            'flowCategory': flow_category(exporter, importer),
-        })
+        for r in yr_records:
+            exp, imp, val = r['exporter'], r['importer'], r[amount_key]
+            a, b = sorted([exp, imp])
+            key = f"{a}|{b}"
 
-    out_path = os.path.join('data', f'{year}.json')
-    with open(out_path, 'w', encoding='utf-8') as f:
-        json.dump(flows, f, ensure_ascii=False, separators=(',', ':'))
-    print(f"  {year}.json: {len(flows)} net flows")
+            if key not in pair_map:
+                pair_map[key] = {'a': a, 'b': b, 'aToB': 0.0, 'bToA': 0.0}
+            if exp == a:
+                pair_map[key]['aToB'] += val
+            else:
+                pair_map[key]['bToA'] += val
 
-# Write bilateral_history.json
-bilateral_out = {k: dict(v) for k, v in bilateral.items()}
-with open(os.path.join('data', 'bilateral_history.json'), 'w', encoding='utf-8') as f:
-    json.dump(bilateral_out, f, ensure_ascii=False, separators=(',', ':'))
-print(f"  bilateral_history.json: {len(bilateral_out)} country pairs")
+            y_str = str(year)
+            if exp == a:
+                bilateral[key][y_str]['aToB'] += val
+            else:
+                bilateral[key][y_str]['bToA'] += val
 
-print("\nDone. All JSON files written to data/")
+        flows = []
+        for key, p in pair_map.items():
+            net = p['aToB'] - p['bToA']
+            if net == 0:
+                continue
+            exporter = p['a'] if net > 0 else p['b']
+            importer = p['b'] if net > 0 else p['a']
+            flows.append({
+                'exporter':     exporter,
+                'importer':     importer,
+                'netValue':     round(abs(net), 2),
+                'flowCategory': flow_category(exporter, importer),
+            })
+
+        with open(os.path.join(out_dir, f'{year}.json'), 'w', encoding='utf-8') as f:
+            json.dump(flows, f, ensure_ascii=False, separators=(',', ':'))
+        print(f"  {year}.json: {len(flows)} net flows")
+
+    bilateral_out = {k: dict(v) for k, v in bilateral.items()}
+    with open(os.path.join(out_dir, 'bilateral_history.json'), 'w', encoding='utf-8') as f:
+        json.dump(bilateral_out, f, ensure_ascii=False, separators=(',', ':'))
+    print(f"  bilateral_history.json: {len(bilateral_out)} country pairs")
+
+
+for metric, cfg in METRICS.items():
+    build_metric(metric, cfg['out_dir'], cfg['amount'])
+
+print("\nDone. value JSON -> data/ ; weight JSON -> data/weight/")
